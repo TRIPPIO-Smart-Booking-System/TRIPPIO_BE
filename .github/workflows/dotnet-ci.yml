@@ -1,0 +1,28 @@
+name: .NET CI (Template)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-dotnet:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🛠 Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: 📄 Check solution exists
+        run: |
+          if [ -f "TRIPPIO_BE.sln" ]; then
+            echo "✅ Solution found, proceeding..."
+          else
+            echo "⚠️ No .sln file found yet. Waiting for backend code to be added."
+          fi
