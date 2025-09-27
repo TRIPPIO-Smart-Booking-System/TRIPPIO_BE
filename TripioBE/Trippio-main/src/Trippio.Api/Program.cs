@@ -84,6 +84,7 @@ internal class Program
 
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             builder.Services.AddScoped(typeof(IRepository<,>), typeof(RepositoryBase<,>));
+            builder.Services.AddScoped<DataSeeder>();
 
             //var services = typeof(PostRepository).Assembly.GetTypes()
             //    .Where(x => x.GetInterfaces()

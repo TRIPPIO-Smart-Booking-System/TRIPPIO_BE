@@ -12,7 +12,8 @@ namespace Trippio.Api
                 using (var context = scope.ServiceProvider.GetRequiredService<TrippioDbContext>())
                 {
                     context.Database.Migrate();
-                    new DataSeeder().SeedAsync(context).Wait();
+                    var dataSeeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
+                    dataSeeder.SeedAsync(context).Wait();
                 }
             }
             return app;

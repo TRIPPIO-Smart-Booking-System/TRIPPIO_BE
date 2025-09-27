@@ -1,5 +1,6 @@
-﻿using Trippio.Core.Domain.Identity;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Trippio.Core.Domain.Identity;
 
 namespace Trippio.Data
 {
@@ -8,22 +9,30 @@ namespace Trippio.Data
         public async Task SeedAsync(TrippioDbContext context)
         {
             var passwordHasher = new PasswordHasher<AppUser>();
-            var rootAdminRoleId = Guid.NewGuid();
-            if (!context.Roles.Any())
+
+            // Kiểm tra và thêm role "admin" nếu chưa tồn tại
+            var adminRole = await context.Roles.FirstOrDefaultAsync(r => r.NormalizedName == "ADMIN");
+            if (adminRole == null)
             {
-                await context.Roles.AddAsync(new AppRole()
+                adminRole = new AppRole
                 {
-                    Id = rootAdminRoleId,
+                    Id = Guid.Parse("39D2FA36-117C-4552-AC04-7A90993075FF"), // Sử dụng ID cố định
                     Name = "admin",
                     NormalizedName = "ADMIN",
                     DisplayName = "Quản trị viên",
-                });
+                    ConcurrencyStamp = Guid.NewGuid().ToString() // Tạo mới nếu cần
+                };
+                await context.Roles.AddAsync(adminRole);
                 await context.SaveChangesAsync();
             }
-            if (!context.Users.Any())
+            var rootAdminRoleId = adminRole.Id; // Lấy ID của role hiện có hoặc vừa tạo
+
+            // Kiểm tra và thêm user "VietAdmin" nếu chưa tồn tại
+            var adminUser = await context.Users.FirstOrDefaultAsync(u => u.NormalizedUserName == "VIETADMIN");
+            if (adminUser == null)
             {
                 var userId = Guid.NewGuid();
-                var user = new AppUser()
+                adminUser = new AppUser
                 {
                     Id = userId,
                     FirstName = "Viet",
@@ -36,16 +45,22 @@ namespace Trippio.Data
                     LockoutEnabled = false,
                     DateCreated = DateTime.UtcNow,
                 };
-                user.PasswordHash = passwordHasher.HashPassword(user, "Admin@123$");
-                await context.Users.AddAsync(user);
-                await context.UserRoles.AddAsync(new IdentityUserRole<Guid>()
-                {
-                    RoleId = rootAdminRoleId,
-                    UserId = userId,
-                });
+                adminUser.PasswordHash = passwordHasher.HashPassword(adminUser, "Admin@123$");
+                await context.Users.AddAsync(adminUser);
                 await context.SaveChangesAsync();
-            }
 
+                // Gán role cho user
+                var userRole = await context.UserRoles.FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == rootAdminRoleId);
+                if (userRole == null)
+                {
+                    await context.UserRoles.AddAsync(new IdentityUserRole<Guid>
+                    {
+                        RoleId = rootAdminRoleId,
+                        UserId = userId,
+                    });
+                    await context.SaveChangesAsync();
+                }
+            }
         }
     }
 }

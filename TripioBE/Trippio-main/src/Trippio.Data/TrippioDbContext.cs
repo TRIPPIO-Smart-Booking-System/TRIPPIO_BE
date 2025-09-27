@@ -7,7 +7,7 @@ namespace Trippio.Data
 {
     public class TrippioDbContext : IdentityDbContext<AppUser, AppRole, Guid>
     {
-        public TrippioDbContext(DbContextOptions options) : base(options)
+        public TrippioDbContext(DbContextOptions<TrippioDbContext> options) : base(options)
         {
         }
 
