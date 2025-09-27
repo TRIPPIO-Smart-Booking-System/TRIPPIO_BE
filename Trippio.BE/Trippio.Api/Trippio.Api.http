@@ -1,6 +1,0 @@
-@Trippio.Api_HostAddress = http://localhost:5224
-
-GET {{Trippio.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
