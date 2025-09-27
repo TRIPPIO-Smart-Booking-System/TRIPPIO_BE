@@ -6,6 +6,7 @@ using Trippio.Core.Domain.Identity;
 using Trippio.Core.Models.Auth;
 using Trippio.Core.Models.System;
 using Trippio.Core.SeedWorks.Constants;
+using Trippio.Core.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -25,6 +26,8 @@ namespace Trippio.Api.Controllers.AdminApi
         private readonly RoleManager<AppRole> _roleManager;
         private readonly IMapper _mapper;
         private readonly JwtTokenSettings _jwtTokenSettings;
+        private readonly IEmailService _emailService;
+        private readonly ISmsService _smsService;
 
         public AuthController(
             UserManager<AppUser> userManager,
@@ -32,7 +35,9 @@ namespace Trippio.Api.Controllers.AdminApi
             ITokenService tokenService,
             RoleManager<AppRole> roleManager,
             IMapper mapper,
-            IOptions<JwtTokenSettings> jwtTokenSettings)
+            IOptions<JwtTokenSettings> jwtTokenSettings,
+            IEmailService emailService,
+            ISmsService smsService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -40,10 +45,12 @@ namespace Trippio.Api.Controllers.AdminApi
             _roleManager = roleManager;
             _mapper = mapper;
             _jwtTokenSettings = jwtTokenSettings.Value;
+            _emailService = emailService;
+            _smsService = smsService;
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult<AuthenticatedResult>> Login([FromBody] LoginRequest request)
+        public async Task<ActionResult<OtpVerificationResult>> Login([FromBody] LoginRequest request)
         {
             // Authentication
             if (request == null)
@@ -51,51 +58,68 @@ namespace Trippio.Api.Controllers.AdminApi
                 return BadRequest("Invalid request");
             }
 
-            var user = await _userManager.FindByEmailAsync(request.Email);
+            // Find user by username or phone number
+            AppUser? user = null;
+
+            // Try to find by username first
+            user = await _userManager.FindByNameAsync(request.UsernameOrPhone);
+
+            // If not found, try to find by phone number
+            if (user == null)
+            {
+                var users = _userManager.Users.Where(u => u.PhoneNumber == request.UsernameOrPhone).ToList();
+                user = users.FirstOrDefault();
+            }
+
             if (user == null || user.IsActive == false || user.LockoutEnabled)
             {
-                return Unauthorized();
+                return Unauthorized(new { message = "Invalid credentials" });
             }
 
             var result = await _signInManager.PasswordSignInAsync(user.UserName!, request.Password, false, true);
 
             if (!result.Succeeded)
             {
-                return Unauthorized();
+                return Unauthorized(new { message = "Invalid credentials" });
             }
 
-            // Authorization
-            var roles = await _userManager.GetRolesAsync(user);
-            var permissions = await GetPermissionsByUserIdAsync(user.Id.ToString());
-
-            var claims = new[]
+            // Check if this is first login and email is not verified
+            if (user.IsFirstLogin && !user.IsEmailVerified)
             {
-                new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-                new Claim(UserClaims.Id, user.Id.ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.UserName),
-                new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(UserClaims.FirstName, user.FirstName),
-                new Claim(UserClaims.Roles, string.Join(";", roles)),
-                new Claim(UserClaims.Permissions, JsonSerializer.Serialize(permissions)),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-            };
+                // Generate OTP for email verification
+                var otp = GenerateOtp();
+                user.EmailOtp = otp;
+                user.EmailOtpExpiry = DateTime.UtcNow.AddMinutes(10);
+                await _userManager.UpdateAsync(user);
 
-            var accessToken = _tokenService.GenerateAccessToken(claims);
-            var refreshToken = _tokenService.GenerateRefreshToken();
+                // Send OTP email
+                await _emailService.SendOtpEmailAsync(user.Email!, user.GetFullName()!, otp);
 
-            user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(30);
+                return Ok(new OtpVerificationResult
+                {
+                    IsSuccess = false,
+                    Message = "Email verification required for first login. OTP has been sent to your email.",
+                    RequireEmailVerification = true,
+                    RequirePhoneVerification = false,
+                    Email = user.Email
+                });
+            }
+
+            // Generate tokens
+            var loginResponse = await GenerateLoginResponse(user);
+
+            // Update last login date
+            user.LastLoginDate = DateTime.UtcNow;
+            user.IsFirstLogin = false;
             await _userManager.UpdateAsync(user);
 
-            var userDto = _mapper.Map<Trippio.Core.Models.Auth.UserDto>(user);
-            userDto.Roles = roles.ToList();
-
-            return Ok(new LoginResponse
+            return Ok(new OtpVerificationResult
             {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddHours(_jwtTokenSettings.ExpireInHours),
-                User = userDto
+                IsSuccess = true,
+                Message = "Login successful",
+                RequireEmailVerification = false,
+                RequirePhoneVerification = false,
+                LoginResponse = loginResponse
             });
         }
 
@@ -129,6 +153,255 @@ namespace Trippio.Api.Controllers.AdminApi
                 }
             }
             return permissions.Distinct().ToList();
+        }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            // Check if username already exists
+            var existingUserByUsername = await _userManager.FindByNameAsync(request.Username);
+            if (existingUserByUsername != null)
+            {
+                return BadRequest(new { message = "Username already exists" });
+            }
+
+            // Check if email already exists
+            var existingUserByEmail = await _userManager.FindByEmailAsync(request.Email);
+            if (existingUserByEmail != null)
+            {
+                return BadRequest(new { message = "Email already exists" });
+            }
+
+            // Check if phone number already exists
+            var existingUserByPhone = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == request.PhoneNumber);
+            if (existingUserByPhone != null)
+            {
+                return BadRequest(new { message = "Phone number already exists" });
+            }
+
+            var user = new AppUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = request.Username,
+                NormalizedUserName = request.Username.ToUpper(),
+                Email = request.Email,
+                NormalizedEmail = request.Email.ToUpper(),
+                PhoneNumber = request.PhoneNumber,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                IsActive = false, // Not active until phone is verified
+                DateCreated = DateTime.UtcNow,
+                Dob = request.DateOfBirth,
+                IsFirstLogin = true,
+                IsEmailVerified = false,
+                IsPhoneVerified = false,
+                Balance = 0,
+                LoyaltyAmountPerPost = 1000
+            };
+
+            var result = await _userManager.CreateAsync(user, request.Password);
+
+            if (result.Succeeded)
+            {
+                // Generate OTP for phone verification
+                var otp = GenerateOtp();
+                user.PhoneOtp = otp;
+                user.PhoneOtpExpiry = DateTime.UtcNow.AddMinutes(5); // SMS OTP expires in 5 minutes
+                await _userManager.UpdateAsync(user);
+
+                // Send OTP SMS
+                await _smsService.SendPhoneOtpAsync(user.PhoneNumber!, user.GetFullName()!, otp);
+
+                return Ok(new OtpVerificationResult
+                {
+                    IsSuccess = false,
+                    Message = "Registration successful. Please verify your phone number with the OTP sent via SMS.",
+                    RequireEmailVerification = false,
+                    RequirePhoneVerification = true,
+                    PhoneNumber = user.PhoneNumber
+                });
+            }
+
+            return BadRequest(result.Errors);
+        }
+
+        [HttpPost("verify-phone")]
+        public async Task<IActionResult> VerifyPhone([FromBody] VerifyPhoneRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == request.PhoneNumber);
+            if (user == null)
+            {
+                return BadRequest(new { message = "User not found" });
+            }
+
+            if (user.IsPhoneVerified)
+            {
+                return BadRequest(new { message = "Phone number already verified" });
+            }
+
+            if (user.PhoneOtp != request.Otp || user.PhoneOtpExpiry < DateTime.UtcNow)
+            {
+                return BadRequest(new { message = "Invalid or expired OTP" });
+            }
+
+            // Verify phone and activate account
+            user.IsPhoneVerified = true;
+            user.PhoneOtp = null;
+            user.PhoneOtpExpiry = null;
+            user.IsActive = true; // Activate account after phone verification
+            await _userManager.UpdateAsync(user);
+
+            return Ok(new
+            {
+                message = "Phone number verified successfully. You can now login to your account.",
+                username = user.UserName
+            });
+        }
+
+        [HttpPost("verify-email")]
+        public async Task<ActionResult<LoginResponse>> VerifyEmail([FromBody] VerifyEmailRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+            {
+                return BadRequest(new { message = "User not found" });
+            }
+
+            if (user.IsEmailVerified)
+            {
+                return BadRequest(new { message = "Email already verified" });
+            }
+
+            if (user.EmailOtp != request.Otp || user.EmailOtpExpiry < DateTime.UtcNow)
+            {
+                return BadRequest(new { message = "Invalid or expired OTP" });
+            }
+
+            // Verify email
+            user.IsEmailVerified = true;
+            user.EmailOtp = null;
+            user.EmailOtpExpiry = null;
+            user.IsFirstLogin = false;
+            user.LastLoginDate = DateTime.UtcNow;
+            await _userManager.UpdateAsync(user);
+
+            // Send welcome email
+            await _emailService.SendWelcomeEmailAsync(user.Email!, user.GetFullName()!);
+
+            // Generate login response
+            var loginResponse = await GenerateLoginResponse(user);
+
+            return Ok(loginResponse);
+        }
+
+        [HttpPost("resend-phone-otp")]
+        public async Task<IActionResult> ResendPhoneOtp([FromBody] ResendPhoneOtpRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == request.PhoneNumber);
+            if (user == null)
+            {
+                return BadRequest(new { message = "User not found" });
+            }
+
+            if (user.IsPhoneVerified)
+            {
+                return BadRequest(new { message = "Phone number already verified" });
+            }
+
+            // Generate new OTP
+            var otp = GenerateOtp();
+            user.PhoneOtp = otp;
+            user.PhoneOtpExpiry = DateTime.UtcNow.AddMinutes(5);
+            await _userManager.UpdateAsync(user);
+
+            // Send OTP SMS
+            await _smsService.SendPhoneOtpAsync(user.PhoneNumber!, user.GetFullName()!, otp);
+
+            return Ok(new { message = "OTP has been resent to your phone" });
+        }
+
+        [HttpPost("resend-otp")]
+        public async Task<IActionResult> ResendOtp([FromBody] ResendOtpRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+            {
+                return BadRequest(new { message = "User not found" });
+            }
+
+            if (user.IsEmailVerified)
+            {
+                return BadRequest(new { message = "Email already verified" });
+            }
+
+            // Generate new OTP
+            var otp = GenerateOtp();
+            user.EmailOtp = otp;
+            user.EmailOtpExpiry = DateTime.UtcNow.AddMinutes(10);
+            await _userManager.UpdateAsync(user);
+
+            // Send OTP email
+            await _emailService.SendOtpEmailAsync(user.Email!, user.GetFullName()!, otp);
+
+            return Ok(new { message = "OTP has been resent to your email" });
+        }
+
+        private string GenerateOtp()
+        {
+            var random = new Random();
+            return random.Next(100000, 999999).ToString();
+        }
+
+        private async Task<LoginResponse> GenerateLoginResponse(AppUser user)
+        {
+            // Authorization
+            var roles = await _userManager.GetRolesAsync(user);
+            var permissions = await GetPermissionsByUserIdAsync(user.Id.ToString());
+
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
+                new Claim(UserClaims.Id, user.Id.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.UserName ?? string.Empty),
+                new Claim(ClaimTypes.Name, user.UserName ?? string.Empty),
+                new Claim(UserClaims.FirstName, user.FirstName),
+                new Claim(UserClaims.Roles, string.Join(";", roles)),
+                new Claim(UserClaims.Permissions, JsonSerializer.Serialize(permissions)),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            var accessToken = _tokenService.GenerateAccessToken(claims);
+            var refreshToken = _tokenService.GenerateRefreshToken();
+
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(30);
+            await _userManager.UpdateAsync(user);
+
+            var userDto = _mapper.Map<UserDto>(user);
+            userDto.Roles = roles.ToList();
+
+            return new LoginResponse
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                ExpiresAt = DateTime.UtcNow.AddHours(_jwtTokenSettings.ExpireInHours),
+                User = userDto
+            };
         }
     }
 }

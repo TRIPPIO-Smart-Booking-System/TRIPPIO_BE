@@ -1,4 +1,6 @@
-﻿namespace Trippio.Core.Models.Auth
+﻿using Trippio.Core.Models.System;
+
+namespace Trippio.Core.Models.Auth
 {
     public class LoginResponse
     {

@@ -56,3 +56,8 @@ nunit-*.xml
 .vs/
 *.user
 *.suo
+
+
+# App settings (local configuration)
+appsettings.json
+appsettings.*.json

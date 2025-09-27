@@ -101,11 +101,17 @@ internal class Program
             //    }
             //}
 
-            builder.Services.AddAutoMapper(typeof(Program));
+            builder.Services.AddAutoMapper(typeof(Trippio.Core.Mappings.AutoMapping));
 
             builder.Services.Configure<JwtTokenSettings>(configuration.GetSection("JwtTokenSettings"));
             builder.Services.Configure<MediaSettings>(configuration.GetSection("MediaSettings"));
             builder.Services.AddScoped<ITokenService, TokenService>();
+
+            // Register Email Service
+            builder.Services.AddScoped<Trippio.Core.Services.IEmailService, Trippio.Data.Service.EmailService>();
+
+            // Register SMS Service
+            builder.Services.AddScoped<Trippio.Core.Services.ISmsService, Trippio.Data.Service.SmsService>();
 
             builder.Services.AddControllers();
 
@@ -119,7 +125,7 @@ internal class Program
                 c.SwaggerDoc("AdminAPI", new OpenApiInfo
                 {
                     Version = "v1",
-                    Title = "API for Administrators",
+                    Title = "API for Tripio",
                     Description = "API for Trippio core domain. This domain keeps track of campaigns, campaign rules, and campaign execution."
                 });
                 c.ParameterFilter<SwaggerNullableParameterFilter>();

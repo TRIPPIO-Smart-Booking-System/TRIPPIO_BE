@@ -37,13 +37,21 @@ namespace Trippio.Data
                     Id = userId,
                     FirstName = "Viet",
                     LastName = "Admin",
+                    Email = "vietbmt19@gmail.com",
                     NormalizedEmail = "VIETBMT19@GMAIL.COM",
                     UserName = "VietAdmin",
                     NormalizedUserName = "VIETADMIN",
+                    PhoneNumber = "0977452762",
                     IsActive = true,
                     SecurityStamp = Guid.NewGuid().ToString(),
                     LockoutEnabled = false,
                     DateCreated = DateTime.UtcNow,
+                    Dob = new DateTime(1990, 1, 1),
+                    IsEmailVerified = true,
+                    IsPhoneVerified = true,
+                    IsFirstLogin = false,
+                    Balance = 10000,
+                    LoyaltyAmountPerPost = 1000
                 };
                 adminUser.PasswordHash = passwordHasher.HashPassword(adminUser, "Admin@123$");
                 await context.Users.AddAsync(adminUser);

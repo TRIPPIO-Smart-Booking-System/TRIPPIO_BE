@@ -35,7 +35,7 @@ namespace Trippio.Api.Controllers.AdminApi
             }
             var userDto = _mapper.Map<AppUser, UserDto>(user);
             var roles = await _userManager.GetRolesAsync(user);
-            userDto.Roles = roles;
+            userDto.Roles = (List<string>)roles;
             return Ok(userDto);
         }
 

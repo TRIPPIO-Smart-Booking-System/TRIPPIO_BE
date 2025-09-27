@@ -10,13 +10,43 @@ namespace Trippio.Core.Mappings
         public AutoMapping()
         {
             // Auth mappings
-            CreateMap<AppUser, Models.Auth.UserDto>();
-            CreateMap<RegisterRequest, AppUser>();
+            CreateMap<AppUser, UserDto>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.UserName))
+                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
+                .ForMember(dest => dest.FirstName, opt => opt.MapFrom(src => src.FirstName))
+                .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.LastName))
+                .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.PhoneNumber))
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive))
+                .ForMember(dest => dest.Avatar, opt => opt.MapFrom(src => src.Avatar))
+                .ForMember(dest => dest.Balance, opt => opt.MapFrom(src => src.Balance))
+                .ForMember(dest => dest.LastLoginDate, opt => opt.MapFrom(src => src.LastLoginDate))
+                .ForMember(dest => dest.DateCreated, opt => opt.MapFrom(src => src.DateCreated))
+                .ForMember(dest => dest.Dob, opt => opt.MapFrom(src => src.Dob))
+                .ForMember(dest => dest.IsEmailVerified, opt => opt.MapFrom(src => src.IsEmailVerified))
+                .ForMember(dest => dest.IsPhoneVerified, opt => opt.MapFrom(src => src.IsPhoneVerified))
+                .ForMember(dest => dest.IsFirstLogin, opt => opt.MapFrom(src => src.IsFirstLogin))
+                .ForMember(dest => dest.Roles, opt => opt.Ignore()); // Roles sẽ được set riêng
 
-            // System mappings  
-            CreateMap<AppUser, Models.System.UserDto>();
-            CreateMap<Models.System.CreateUserRequest, AppUser>();
-            CreateMap<Models.System.UpdateUserRequest, AppUser>();
+            CreateMap<RegisterRequest, AppUser>()
+                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Username))
+                .ForMember(dest => dest.NormalizedUserName, opt => opt.MapFrom(src => src.Username.ToUpper()))
+                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
+                .ForMember(dest => dest.NormalizedEmail, opt => opt.MapFrom(src => src.Email.ToUpper()))
+                .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.PhoneNumber))
+                .ForMember(dest => dest.FirstName, opt => opt.MapFrom(src => src.FirstName))
+                .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.LastName))
+                .ForMember(dest => dest.Dob, opt => opt.MapFrom(src => src.DateOfBirth))
+                .ForMember(dest => dest.DateCreated, opt => opt.MapFrom(src => DateTime.UtcNow))
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => false))
+                .ForMember(dest => dest.IsFirstLogin, opt => opt.MapFrom(src => true))
+                .ForMember(dest => dest.IsEmailVerified, opt => opt.MapFrom(src => false))
+                .ForMember(dest => dest.IsPhoneVerified, opt => opt.MapFrom(src => false))
+                .ForMember(dest => dest.Balance, opt => opt.MapFrom(src => 0))
+                .ForMember(dest => dest.LoyaltyAmountPerPost, opt => opt.MapFrom(src => 1000));
+
+            CreateMap<CreateUserRequest, AppUser>();
+            CreateMap<UpdateUserRequest, AppUser>();
         }
     }
 }
