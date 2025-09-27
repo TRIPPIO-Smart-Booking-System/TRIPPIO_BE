@@ -1,25 +1,16 @@
-﻿using CMS.Core.Domain.Content;
-using CMS.Core.Domain.Identity;
-using CMS.Core.Domain.Royalty;
+﻿using Trippio.Core.Domain.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace CMS.Data
+namespace Trippio.Data
 {
-    public class CMSDbContext : IdentityDbContext<AppUser, AppRole, Guid>
+    public class TrippioDbContext : IdentityDbContext<AppUser, AppRole, Guid>
     {
-        public CMSDbContext(DbContextOptions options) : base(options)
+        public TrippioDbContext(DbContextOptions options) : base(options)
         {
         }
-        public DbSet<Post> Posts { get; set; }
-        public DbSet<PostCategory> PostCateGories { get; set; }
-        public DbSet<PostActivityLog> PostActivityLogs { get; set; }
-        public DbSet<Tag> Tags { get; set; }
-        public DbSet<Series> Series { get; set; }
-        public DbSet<PostTag> PostTags { get; set; }
-        public DbSet<PostInSeries> PostInSeries { get; set; }
-        public DbSet<Transaction> Transaction { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             builder.Entity<IdentityUserClaim<Guid>>().ToTable("AppUserClaims")

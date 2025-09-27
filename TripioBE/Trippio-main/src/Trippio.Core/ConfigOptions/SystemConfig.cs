@@ -1,4 +1,4 @@
-﻿namespace CMS.Core.ConfigOptions
+﻿namespace Trippio.Core.ConfigOptions
 {
     public class SystemConfig
     {

@@ -1,16 +1,16 @@
-﻿using AutoMapper;
-using CMS.Api.Extensions;
-using CMS.Api.Filters;
-using CMS.Core.Domain.Identity;
-using CMS.Core.Models;
-using CMS.Core.Models.System;
+using AutoMapper;
+using Trippio.Api.Extensions;
+using Trippio.Api.Filters;
+using Trippio.Core.Domain.Identity;
+using Trippio.Core.Models;
+using Trippio.Core.Models.System;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using static CMS.Core.SeedWorks.Constants.Permissions;
+using static Trippio.Core.SeedWorks.Constants.Permissions;
 
-namespace CMS.Api.Controllers.AdminApi
+namespace Trippio.Api.Controllers.AdminApi
 {
     [Route("api/admin/user")]
     public class UserController : ControllerBase
@@ -75,13 +75,14 @@ namespace CMS.Api.Controllers.AdminApi
         {
             if ((await _userManager.FindByNameAsync(request.UserName)) != null)
             {
-                return BadRequest();
+                return BadRequest("Username already exists");
             }
 
-            if ((await _userManager.FindByEmailAsync(request.Email)) != null)
+            if (!string.IsNullOrEmpty(request.Email) && (await _userManager.FindByEmailAsync(request.Email)) != null)
             {
-                return BadRequest();
+                return BadRequest("Email already exists");
             }
+
             var user = _mapper.Map<CreateUserRequest, AppUser>(request);
             var result = await _userManager.CreateAsync(user, request.Password);
 
@@ -118,7 +119,6 @@ namespace CMS.Api.Controllers.AdminApi
         public async Task<IActionResult> ChangeMyPassWord([FromBody] ChangeMyPasswordRequest request)
         {
             var user = await _userManager.FindByIdAsync(User.GetUserId().ToString());
-            //User có thể gọi getUserId để lấy id của người dùng hiện tại và phương thức này đã được định nghĩa trong lớp ClaimsPrincipal nó được map tới claimsprincipal
 
             if (user == null)
             {
@@ -147,7 +147,6 @@ namespace CMS.Api.Controllers.AdminApi
             }
             return Ok();
         }
-
 
         [HttpPost("set-password/{id}")]
         [Authorize(Users.Edit)]
@@ -185,7 +184,7 @@ namespace CMS.Api.Controllers.AdminApi
             return Ok();
         }
 
-        [HttpPut("{id}/assign-users")]
+        [HttpPut("{id}/assign-roles")]
         [ValidateModel]
         [Authorize(Users.Edit)]
         public async Task<IActionResult> AssignRolesToUser(string id, [FromBody] string[] roles)
@@ -198,6 +197,7 @@ namespace CMS.Api.Controllers.AdminApi
             var currentRoles = await _userManager.GetRolesAsync(user);
             var removedResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
             var addedResult = await _userManager.AddToRolesAsync(user, roles);
+
             if (!addedResult.Succeeded || !removedResult.Succeeded)
             {
                 List<IdentityError> addedErrorList = addedResult.Errors.ToList();

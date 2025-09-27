@@ -1,4 +1,4 @@
-﻿namespace CMS.Core.Models.System
+namespace Trippio.Core.Models.System
 {
     public class UpdateUserRequest
     {

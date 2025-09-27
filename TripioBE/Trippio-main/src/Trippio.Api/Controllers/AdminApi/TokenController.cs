@@ -1,11 +1,13 @@
-﻿using CMS.Api.Service;
-using CMS.Core.Domain.Identity;
-using CMS.Core.Models.Auth;
+using Trippio.Api.Service;
+using Trippio.Core.ConfigOptions;
+using Trippio.Core.Domain.Identity;
+using Trippio.Core.Models.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
-namespace CMS.Api.Controllers.AdminApi
+namespace Trippio.Api.Controllers.AdminApi
 {
     [Route("api/admin/token")]
     [ApiController]
@@ -13,11 +15,15 @@ namespace CMS.Api.Controllers.AdminApi
     {
         private readonly UserManager<AppUser> _userManager;
         private readonly ITokenService _tokenService;
-        public TokenController(UserManager<AppUser> userManager, TokenService tokenService)
+        private readonly JwtTokenSettings _jwtTokenSettings;
+
+        public TokenController(UserManager<AppUser> userManager, ITokenService tokenService, IOptions<JwtTokenSettings> jwtTokenSettings)
         {
             _tokenService = tokenService;
             _userManager = userManager;
+            _jwtTokenSettings = jwtTokenSettings.Value;
         }
+
         [HttpPost("refresh")]
         public async Task<ActionResult<AuthenticatedResult>> Refresh(TokenRequest tokenRequest)
         {
@@ -36,7 +42,6 @@ namespace CMS.Api.Controllers.AdminApi
             }
 
             var userName = principal.Identity.Name;
-
             var user = await _userManager.FindByNameAsync(userName);
 
             if (user == null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
@@ -48,15 +53,17 @@ namespace CMS.Api.Controllers.AdminApi
             var newRefreshToken = _tokenService.GenerateRefreshToken();
 
             user.RefreshToken = newRefreshToken;
-
             await _userManager.UpdateAsync(user);
 
             return Ok(new AuthenticatedResult()
             {
                 RefreshToken = newRefreshToken,
-                Token = newAccessToken
+                AccessToken = newAccessToken,
+                ExpiresAt = DateTime.UtcNow.AddHours(_jwtTokenSettings.ExpireInHours),
+                TokenType = "Bearer"
             });
         }
+
         [HttpPost]
         [Authorize]
         [Route("revoke")]
@@ -71,11 +78,7 @@ namespace CMS.Api.Controllers.AdminApi
                 return NotFound("User not found.");
 
             user.RefreshToken = null;
-
-            if (user.RefreshTokenExpiryTime is DateTime?)
-            {
-                user.RefreshTokenExpiryTime = null;
-            }
+            user.RefreshTokenExpiryTime = null;
 
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
@@ -83,7 +86,5 @@ namespace CMS.Api.Controllers.AdminApi
 
             return NoContent();
         }
-
     }
-
 }

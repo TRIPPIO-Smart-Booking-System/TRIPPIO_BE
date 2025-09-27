@@ -1,9 +1,9 @@
-﻿namespace CMS.Core.ConfigOptions
+﻿namespace Trippio.Core.ConfigOptions
 {
     public class JwtTokenSettings
     {
-        public string Key { get; set; }
-        public string Issuer { get; set; }
-        public int ExpireInHours { get; set; }
+        public string Key { get; set; } = string.Empty;
+        public string Issuer { get; set; } = string.Empty;
+        public int ExpireInHours { get; set; } = 1;
     }
 }

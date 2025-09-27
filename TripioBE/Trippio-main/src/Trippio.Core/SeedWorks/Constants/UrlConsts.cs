@@ -1,4 +1,4 @@
-﻿namespace CMS.Core.SeedWorks.Constants
+﻿namespace Trippio.Core.SeedWorks.Constants
 {
     public static class UrlConsts
     {

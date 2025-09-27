@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 
-namespace CMS.Api.Authorization
+namespace Trippio.Api.Authorization
 {
     public class PermissionPolicyProvider : IAuthorizationPolicyProvider
     {

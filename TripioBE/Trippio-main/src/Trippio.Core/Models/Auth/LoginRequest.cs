@@ -1,8 +1,14 @@
-﻿namespace CMS.Core.Models.Auth
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Trippio.Core.Models.Auth
 {
     public class LoginRequest
     {
-        public required string UserName { get; set; }
-        public required string Password { get; set; }
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        public string Password { get; set; } = string.Empty;
     }
 }

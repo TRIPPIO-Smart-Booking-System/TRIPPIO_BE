@@ -1,16 +1,19 @@
-﻿using CMS.Api.Extensions;
-using CMS.Api.Service;
-using CMS.Core.Domain.Identity;
-using CMS.Core.Models.Auth;
-using CMS.Core.Models.System;
-using CMS.Core.SeedWorks.Constants;
+using AutoMapper;
+using Trippio.Api.Extensions;
+using Trippio.Api.Service;
+using Trippio.Core.ConfigOptions;
+using Trippio.Core.Domain.Identity;
+using Trippio.Core.Models.Auth;
+using Trippio.Core.Models.System;
+using Trippio.Core.SeedWorks.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text.Json;
 
-namespace CMS.Api.Controllers.AdminApi
+namespace Trippio.Api.Controllers.AdminApi
 {
     [Route("api/admin/auth")]
     [ApiController]
@@ -20,71 +23,89 @@ namespace CMS.Api.Controllers.AdminApi
         private readonly SignInManager<AppUser> _signInManager;
         private readonly ITokenService _tokenService;
         private readonly RoleManager<AppRole> _roleManager;
-        public AuthController(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, ITokenService tokenService, RoleManager<AppRole> roleManager)
+        private readonly IMapper _mapper;
+        private readonly JwtTokenSettings _jwtTokenSettings;
+
+        public AuthController(
+            UserManager<AppUser> userManager,
+            SignInManager<AppUser> signInManager,
+            ITokenService tokenService,
+            RoleManager<AppRole> roleManager,
+            IMapper mapper,
+            IOptions<JwtTokenSettings> jwtTokenSettings)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _tokenService = tokenService;
             _roleManager = roleManager;
+            _mapper = mapper;
+            _jwtTokenSettings = jwtTokenSettings.Value;
         }
+
         [HttpPost("login")]
         public async Task<ActionResult<AuthenticatedResult>> Login([FromBody] LoginRequest request)
         {
-            //authentication
+            // Authentication
             if (request == null)
             {
                 return BadRequest("Invalid request");
             }
 
-
-            var user = await _userManager.FindByNameAsync(request.UserName);
+            var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null || user.IsActive == false || user.LockoutEnabled)
             {
                 return Unauthorized();
             }
-            // k co await thi k the succeeded
-            var result = await _signInManager.PasswordSignInAsync(request.UserName, request.Password, false, true);
+
+            var result = await _signInManager.PasswordSignInAsync(user.UserName!, request.Password, false, true);
 
             if (!result.Succeeded)
             {
                 return Unauthorized();
             }
 
-            //authorization
+            // Authorization
             var roles = await _userManager.GetRolesAsync(user);
+            var permissions = await GetPermissionsByUserIdAsync(user.Id.ToString());
 
-            var permissions = await this.GetPermissionsByUserIdAsync(user.Id.ToString());
             var claims = new[]
             {
-                    new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-                    new Claim(UserClaims.Id, user.Id.ToString()),
-                    new Claim(ClaimTypes.NameIdentifier, user.UserName),
-                    new Claim(ClaimTypes.Name, user.UserName),
-                    new Claim(UserClaims.FirstName, user.FirstName),
-                    new Claim(UserClaims.Roles, string.Join(";", roles)),
-                    new Claim(UserClaims.Permissions, JsonSerializer.Serialize(permissions)),
-                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
+                new Claim(UserClaims.Id, user.Id.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.UserName),
+                new Claim(ClaimTypes.Name, user.UserName),
+                new Claim(UserClaims.FirstName, user.FirstName),
+                new Claim(UserClaims.Roles, string.Join(";", roles)),
+                new Claim(UserClaims.Permissions, JsonSerializer.Serialize(permissions)),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
-            var accesToken = _tokenService.GenerateAccessToken(claims);
+            var accessToken = _tokenService.GenerateAccessToken(claims);
             var refreshToken = _tokenService.GenerateRefreshToken();
 
             user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiryTime = DateTime.Now.AddDays(30);
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(30);
             await _userManager.UpdateAsync(user);
 
-            return Ok(new AuthenticatedResult()
+            var userDto = _mapper.Map<Trippio.Core.Models.Auth.UserDto>(user);
+            userDto.Roles = roles.ToList();
+
+            return Ok(new LoginResponse
             {
-                Token = accesToken,
-                RefreshToken = refreshToken
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                ExpiresAt = DateTime.UtcNow.AddHours(_jwtTokenSettings.ExpireInHours),
+                User = userDto
             });
         }
+
         private async Task<List<string>> GetPermissionsByUserIdAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
             var roles = await _userManager.GetRolesAsync(user);
             var permissions = new List<string>();
             var allPermissions = new List<RoleClaimsDto>();
+
             if (roles.Contains(Roles.Admin))
             {
                 var types = typeof(Permissions).GetNestedTypes();
@@ -93,23 +114,21 @@ namespace CMS.Api.Controllers.AdminApi
                     allPermissions.GetPermissions(type);
                 }
                 permissions.AddRange(allPermissions.Select(x => x.Value));
-
             }
             else
             {
                 foreach (var roleName in roles)
                 {
                     var role = await _roleManager.FindByNameAsync(roleName);
-                    var claims = await _roleManager.GetClaimsAsync(role);
-                    var roleClaimsValues = claims.Select(x => x.Value).ToList();
-                    permissions.AddRange(roleClaimsValues);
-                    //add range them nhieu doi tuong vao trong db
-                    //add them 1 doi tuong vao ben trong db
-
+                    if (role != null)
+                    {
+                        var claims = await _roleManager.GetClaimsAsync(role);
+                        var roleClaimsValues = claims.Select(x => x.Value).ToList();
+                        permissions.AddRange(roleClaimsValues);
+                    }
                 }
             }
             return permissions.Distinct().ToList();
-
         }
     }
 }

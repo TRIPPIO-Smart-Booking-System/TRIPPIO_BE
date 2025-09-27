@@ -1,7 +1,7 @@
-﻿using CMS.Core.SeedWorks.Constants;
+﻿using Trippio.Core.SeedWorks.Constants;
 using System.Security.Claims;
 
-namespace CMS.Api.Extensions
+namespace Trippio.Api.Extensions
 {
     public static class IdentityExtension
     {

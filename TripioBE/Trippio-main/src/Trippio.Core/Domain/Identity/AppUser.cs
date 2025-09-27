@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace CMS.Core.Domain.Identity
+namespace Trippio.Core.Domain.Identity
 {
     [Table("AppUsers")]
     public class AppUser : IdentityUser<Guid>

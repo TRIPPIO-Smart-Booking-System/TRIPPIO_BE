@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Hosting;
 using Serilog;
 
-namespace CMS.Core.Logging
+namespace Trippio.Core.Logging
 {
     public class SeriLogger
     {

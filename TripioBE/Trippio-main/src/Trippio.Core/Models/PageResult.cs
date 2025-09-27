@@ -1,4 +1,4 @@
-﻿namespace CMS.Core.Models
+﻿namespace Trippio.Core.Models
 {
     public class PageResult<T> : PageResultBase where T : class
     {

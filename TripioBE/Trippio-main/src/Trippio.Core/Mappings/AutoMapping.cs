@@ -1,28 +1,22 @@
 ﻿using AutoMapper;
-using CMS.Core.Domain.Content;
-using CMS.Core.Domain.Identity;
-using CMS.Core.Models.Content;
-using CMS.Core.Models.System;
+using Trippio.Core.Domain.Identity;
+using Trippio.Core.Models.Auth;
+using Trippio.Core.Models.System;
 
-namespace CMS.Core.Mappings
+namespace Trippio.Core.Mappings
 {
     public class AutoMapping : Profile
     {
         public AutoMapping()
         {
-            CreateMap<Post, PostInListDto>();
-            CreateMap<Post, PostDto>();
-            CreateMap<CreateUpdatePostRequest, Post>();
-            CreateMap<AppRole, RoleDto>();
-            CreateMap<AppUser, UserDto>();
-            CreateMap<CreateUserRequest, AppUser>();
-            CreateMap<UpdateUserRequest, AppUser>();
-            CreateMap<PostCategory, PostCategoryDto>();
-            CreateMap<CreateUpdatePostCategoryRequest, PostCategory>();
-            CreateMap<Series, SeriesInListDto>();
-            CreateMap<Series, SeriesDto>();
-            CreateMap<CreateUpdateSeriesRequest, Series>();
-            CreateMap<PostActivityLog, PostActivityLogDto>();
+            // Auth mappings
+            CreateMap<AppUser, Models.Auth.UserDto>();
+            CreateMap<RegisterRequest, AppUser>();
+
+            // System mappings  
+            CreateMap<AppUser, Models.System.UserDto>();
+            CreateMap<Models.System.CreateUserRequest, AppUser>();
+            CreateMap<Models.System.UpdateUserRequest, AppUser>();
         }
     }
 }

@@ -1,11 +1,11 @@
-﻿using CMS.Core.Domain.Identity;
-using CMS.Core.Models.System;
+﻿using Trippio.Core.Domain.Identity;
+using Trippio.Core.Models.System;
 using Microsoft.AspNetCore.Identity;
 using System.ComponentModel;
 using System.Reflection;
 using System.Security.Claims;
 
-namespace CMS.Api.Extensions
+namespace Trippio.Api.Extensions
 {
     public static class ClaimExtension
     {

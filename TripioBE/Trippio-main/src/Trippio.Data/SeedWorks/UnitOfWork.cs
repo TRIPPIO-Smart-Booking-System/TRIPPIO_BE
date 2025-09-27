@@ -1,42 +1,51 @@
-﻿using AutoMapper;
-using CMS.Core.Domain.Identity;
-using CMS.Core.Repositories;
-using CMS.Core.SeedWorks;
-using CMS.Core.Services;
-using CMS.Data.Repositories;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.EntityFrameworkCore.Storage;
+using Trippio.Core.SeedWorks;
 
-namespace CMS.Data.SeedWorks
+namespace Trippio.Data.SeedWorks
 {
     public class UnitOfWork : IUnitOfWork
     {
-        private readonly CMSDbContext _context;
-        public UnitOfWork(CMSDbContext context, IMapper mapper, UserManager<AppUser> userManager)
+        private readonly TrippioDbContext _context;
+        private IDbContextTransaction? _transaction;
+
+        public UnitOfWork(TrippioDbContext context)
         {
             _context = context;
-            Posts = new PostRepository(context, mapper, userManager);
-            PostCategories = new PostCategoryRepository(context, mapper);
-            Series = new SeriesRepository(context, mapper);
-            Transactions = new TransactionRepository(context, mapper);
         }
-
-        public IPostRepository Posts { get; private set; }
-
-        public IPostCategoryRepository PostCategories { get; private set; }
-
-        public ISeriesRepository Series { get; private set; }
-
-        public ITransactionRepository Transactions { get; private set; }
-
-        public IRoyaltyService RoyaltyService { get; private set; }
 
         public async Task<int> CompleteAsync()
         {
             return await _context.SaveChangesAsync();
         }
 
+        public async Task BeginTransactionAsync()
+        {
+            _transaction = await _context.Database.BeginTransactionAsync();
+        }
+
+        public async Task CommitTransactionAsync()
+        {
+            if (_transaction != null)
+            {
+                await _transaction.CommitAsync();
+                await _transaction.DisposeAsync();
+                _transaction = null;
+            }
+        }
+
+        public async Task RollbackTransactionAsync()
+        {
+            if (_transaction != null)
+            {
+                await _transaction.RollbackAsync();
+                await _transaction.DisposeAsync();
+                _transaction = null;
+            }
+        }
+
         public void Dispose()
         {
+            _transaction?.Dispose();
             _context.Dispose();
         }
     }

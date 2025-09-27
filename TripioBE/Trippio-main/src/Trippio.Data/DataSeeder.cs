@@ -1,11 +1,11 @@
-﻿using CMS.Core.Domain.Identity;
+﻿using Trippio.Core.Domain.Identity;
 using Microsoft.AspNetCore.Identity;
 
-namespace CMS.Data
+namespace Trippio.Data
 {
     public class DataSeeder
     {
-        public async Task SeedAsync(CMSDbContext context)
+        public async Task SeedAsync(TrippioDbContext context)
         {
             var passwordHasher = new PasswordHasher<AppUser>();
             var rootAdminRoleId = Guid.NewGuid();

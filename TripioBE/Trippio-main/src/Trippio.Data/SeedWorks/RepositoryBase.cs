@@ -1,14 +1,14 @@
-﻿using CMS.Core.SeedWorks;
+﻿using Trippio.Core.SeedWorks;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
-namespace CMS.Data.SeedWorks
+namespace Trippio.Data.SeedWorks
 {
     public class RepositoryBase<T, Key> : IRepository<T, Key> where T : class
     {
         private readonly DbSet<T> _dbSet;
-        protected readonly CMSDbContext _context;
-        public RepositoryBase(CMSDbContext context)
+        protected readonly TrippioDbContext _context;
+        public RepositoryBase(TrippioDbContext context)
         {
             _context = context;
             _dbSet = context.Set<T>();

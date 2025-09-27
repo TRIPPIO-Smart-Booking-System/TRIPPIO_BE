@@ -1,6 +1,6 @@
 ﻿using System.Security.Claims;
 
-namespace CMS.Api.Service
+namespace Trippio.Api.Service
 {
     public interface ITokenService
     {

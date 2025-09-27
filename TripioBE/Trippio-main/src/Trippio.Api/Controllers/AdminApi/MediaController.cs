@@ -1,10 +1,10 @@
-﻿using CMS.Core.ConfigOptions;
+using Trippio.Core.ConfigOptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 
-namespace CMS.Api.Controllers.AdminApi
+namespace Trippio.Api.Controllers.AdminApi
 {
     [Route("api/admin/media")]
     [ApiController]
@@ -29,30 +29,31 @@ namespace CMS.Api.Controllers.AdminApi
             var files = Request.Form.Files;
             if (files.Count == 0)
             {
-                return null;
+                return BadRequest("No files uploaded");
             }
 
             var file = files[0];
             var filename = ContentDispositionHeaderValue.Parse(file.ContentDisposition)?.FileName?.Trim('"');
             if (allowImageTypes?.Any(x => filename?.EndsWith(x, StringComparison.OrdinalIgnoreCase) == true) == false)
             {
-                throw new Exception("Không cho phép tải lên file không phải ảnh.");
+                return BadRequest("File type not allowed. Only image files are permitted.");
             }
 
-            var imageFolder = $@"\{_settings.ImageFolder}\images\{type}\{now:MMyyyy}";
-
+            var imageFolder = $@"\{_settings.ImagePath}\images\{type}\{now:MMyyyy}";
             var folder = _hostingEnv.WebRootPath + imageFolder;
 
             if (!Directory.Exists(folder))
             {
                 Directory.CreateDirectory(folder);
             }
+
             var filePath = Path.Combine(folder, filename);
-            using (var fs = global::System.IO.File.Create(filePath))
+            using (var fs = System.IO.File.Create(filePath))
             {
                 file.CopyTo(fs);
                 fs.Flush();
             }
+
             var path = Path.Combine(imageFolder, filename).Replace(@"\", @"/");
             return Ok(new { path });
         }

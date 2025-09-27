@@ -1,15 +1,10 @@
-﻿using CMS.Core.Repositories;
-using CMS.Core.Services;
-
-namespace CMS.Core.SeedWorks
+﻿namespace Trippio.Core.SeedWorks
 {
-    public interface IUnitOfWork
+    public interface IUnitOfWork : IDisposable
     {
-        IPostRepository Posts { get; }
-        IPostCategoryRepository PostCategories { get; }
-        ISeriesRepository Series { get; }
-        ITransactionRepository Transactions { get; }
-        IRoyaltyService RoyaltyService { get; }
         Task<int> CompleteAsync();
+        Task BeginTransactionAsync();
+        Task CommitTransactionAsync();
+        Task RollbackTransactionAsync();
     }
 }

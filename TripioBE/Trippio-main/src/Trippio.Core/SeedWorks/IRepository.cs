@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
 
-namespace CMS.Core.SeedWorks
+namespace Trippio.Core.SeedWorks
 {
     public interface IRepository<T, Key> where T : class
     {

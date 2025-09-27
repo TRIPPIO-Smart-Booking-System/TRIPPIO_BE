@@ -1,7 +1,7 @@
-﻿using CMS.Data;
+﻿using Trippio.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace CMS.Api
+namespace Trippio.Api
 {
     public static class MigrationManager
     {
@@ -9,9 +9,9 @@ namespace CMS.Api
         {
             using (var scope = app.Services.CreateScope())
             {
-                using (var context = scope.ServiceProvider.GetRequiredService<CMSDbContext>())
+                using (var context = scope.ServiceProvider.GetRequiredService<TrippioDbContext>())
                 {
-                    context.Database.Migrate(); ;
+                    context.Database.Migrate();
                     new DataSeeder().SeedAsync(context).Wait();
                 }
             }

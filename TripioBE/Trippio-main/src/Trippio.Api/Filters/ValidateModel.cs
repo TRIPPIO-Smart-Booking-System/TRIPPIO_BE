@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace CMS.Api.Filters
+namespace Trippio.Api.Filters
 {
     public class ValidateModelAttribute : ActionFilterAttribute
     {

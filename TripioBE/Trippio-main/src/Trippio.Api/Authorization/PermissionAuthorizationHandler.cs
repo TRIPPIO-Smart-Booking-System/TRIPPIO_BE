@@ -1,10 +1,10 @@
-﻿using CMS.Core.Domain.Identity;
-using CMS.Core.SeedWorks.Constants;
+﻿using Trippio.Core.Domain.Identity;
+using Trippio.Core.SeedWorks.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 
-namespace CMS.Api.Authorization
+namespace Trippio.Api.Authorization
 {
     public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
     {

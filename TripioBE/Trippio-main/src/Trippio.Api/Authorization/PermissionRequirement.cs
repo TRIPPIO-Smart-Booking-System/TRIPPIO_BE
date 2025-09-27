@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 
-namespace CMS.Api.Authorization
+namespace Trippio.Api.Authorization
 {
     public class PermissionRequirement : IAuthorizationRequirement
     {
