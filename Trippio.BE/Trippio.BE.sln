@@ -3,13 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36511.14 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Trippio.Api", "Trippio.Api\Trippio.Api.csproj", "{3D6C7A4D-A654-4B1A-8D8E-B4A5CD248177}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Trippio.Application", "Trippio.Application\Trippio.Application.csproj", "{51CC83F4-1333-47AE-BC22-6FAAA6A7477F}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Trippio.Domain", "Trippio.Domain\Trippio.Domain.csproj", "{014E5AFD-0754-4B29-A119-749FA4C13CAB}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Trippio.Infrastructure", "Trippio.Infrastructure\Trippio.Infrastructure.csproj", "{4598AE7B-E3A0-4551-AFE0-AFCFB1E7ADD7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Trippio.Api", "Trippio.Api\Trippio.Api.csproj", "{7E85C485-6FC0-4BB9-9265-A55B7C62CDDB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,27 +11,15 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{3D6C7A4D-A654-4B1A-8D8E-B4A5CD248177}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3D6C7A4D-A654-4B1A-8D8E-B4A5CD248177}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3D6C7A4D-A654-4B1A-8D8E-B4A5CD248177}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3D6C7A4D-A654-4B1A-8D8E-B4A5CD248177}.Release|Any CPU.Build.0 = Release|Any CPU
-		{51CC83F4-1333-47AE-BC22-6FAAA6A7477F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{51CC83F4-1333-47AE-BC22-6FAAA6A7477F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{51CC83F4-1333-47AE-BC22-6FAAA6A7477F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{51CC83F4-1333-47AE-BC22-6FAAA6A7477F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{014E5AFD-0754-4B29-A119-749FA4C13CAB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{014E5AFD-0754-4B29-A119-749FA4C13CAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{014E5AFD-0754-4B29-A119-749FA4C13CAB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{014E5AFD-0754-4B29-A119-749FA4C13CAB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4598AE7B-E3A0-4551-AFE0-AFCFB1E7ADD7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4598AE7B-E3A0-4551-AFE0-AFCFB1E7ADD7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4598AE7B-E3A0-4551-AFE0-AFCFB1E7ADD7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4598AE7B-E3A0-4551-AFE0-AFCFB1E7ADD7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7E85C485-6FC0-4BB9-9265-A55B7C62CDDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E85C485-6FC0-4BB9-9265-A55B7C62CDDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E85C485-6FC0-4BB9-9265-A55B7C62CDDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E85C485-6FC0-4BB9-9265-A55B7C62CDDB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {163CB007-4CF6-44E9-B1E9-E697535558D0}
+		SolutionGuid = {93ACCDD3-2C8F-43B9-8130-7E858BAFB2BA}
 	EndGlobalSection
 EndGlobal
