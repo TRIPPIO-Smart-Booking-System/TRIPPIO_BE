@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35327.3
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Trippio.Api", "src\Trippio.Api\Trippio.Api.csproj", "{AEDD6C13-40FB-2F67-1A23-8F5693BCD3CE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Trippio.Core", "src\Trippio.Core\Trippio.Core.csproj", "{5751D2C2-5E29-B2C4-364B-7116985D34DC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Trippio.Data", "src\Trippio.Data\Trippio.Data.csproj", "{6616C553-5540-2889-7DB9-90864A2814B4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AEDD6C13-40FB-2F67-1A23-8F5693BCD3CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AEDD6C13-40FB-2F67-1A23-8F5693BCD3CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AEDD6C13-40FB-2F67-1A23-8F5693BCD3CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AEDD6C13-40FB-2F67-1A23-8F5693BCD3CE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5751D2C2-5E29-B2C4-364B-7116985D34DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5751D2C2-5E29-B2C4-364B-7116985D34DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5751D2C2-5E29-B2C4-364B-7116985D34DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5751D2C2-5E29-B2C4-364B-7116985D34DC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6616C553-5540-2889-7DB9-90864A2814B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6616C553-5540-2889-7DB9-90864A2814B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6616C553-5540-2889-7DB9-90864A2814B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6616C553-5540-2889-7DB9-90864A2814B4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {ABDC2C73-B175-4460-AF70-DEF2F9289309}
+	EndGlobalSection
+EndGlobal
