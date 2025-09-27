@@ -1,0 +1,46 @@
+services:
+  # Development overrides
+  trippio-sqlserver:
+    environment:
+      - MSSQL_PID=Developer  # Use Developer edition for development
+    volumes:
+      - sqlserver_dev_data:/var/opt/mssql
+    healthcheck:
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  trippio.api:
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:7142
+      - ConnectionStrings__DefaultConnection=Server=trippio-sqlserver,1433;Database=TrippioDB;User Id=sa;Password=Strong!Pass123;TrustServerCertificate=True;Encrypt=True;
+      - Logging__LogLevel__Default=Debug
+      - Logging__LogLevel__Microsoft.AspNetCore=Information
+    volumes:
+      # Source code mounting for hot-reload (if needed)
+      - ./logs:/app/logs
+    ports:
+      - "7142:7142"
+      - "7143:7143"  # HTTPS port for development
+    healthcheck:
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Development tools
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: trippio-mailhog
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+    networks:
+      - trippio_network
+    restart: unless-stopped
+
+volumes:
+  sqlserver_dev_data:
+    name: trippio_sqlserver_dev_data

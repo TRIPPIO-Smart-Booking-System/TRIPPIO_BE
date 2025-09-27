@@ -1,0 +1,70 @@
+services:
+  # Database section
+  trippio-sqlserver:
+    image: mcr.microsoft.com/mssql/server:2017-latest
+    container_name: trippio-sqlserver
+    environment:
+      - SA_PASSWORD=Strong!Pass123
+      - ACCEPT_EULA=Y
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - trippio_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "sleep 5"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # Infrastructure section
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: trippio-portainer
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer_data:/data
+    networks:
+      - trippio_network
+    restart: unless-stopped
+
+  # API section
+  trippio.api:
+    image: ${DOCKER_REGISTRY-}trippio-api:${PLATFORM:-linux}-${TAG:-latest}
+    container_name: trippio-api
+    build:
+      context: .
+      dockerfile: Trippio.Api/Dockerfile
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:7142
+      - ConnectionStrings__DefaultConnection=Server=trippio-sqlserver,1433;Database=TrippioDB;User Id=sa;Password=Strong!Pass123;TrustServerCertificate=True;Encrypt=True;
+    ports:
+      - "7142:7142"
+    networks:
+      - trippio_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7142/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+# Network section
+networks:
+  trippio_network:
+    name: trippio_network
+    driver: bridge
+
+# Volumes section
+volumes:
+  sqlserver_data:
+    name: trippio_sqlserver_data
+  portainer_data:
+    name: trippio_portainer_data

@@ -17,6 +17,9 @@ using Serilog;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 using System.Text;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using HealthChecks.UI.Client;
 
 internal class Program
 {
@@ -113,6 +116,11 @@ internal class Program
             // Register SMS Service
             builder.Services.AddScoped<Trippio.Core.Services.ISmsService, Trippio.Data.Service.SmsService>();
 
+            // Add Health Checks
+            builder.Services.AddHealthChecks()
+                .AddSqlServer(connectionString, name: "sql-server")
+                .AddCheck("self", () => HealthCheckResult.Healthy("API is running"));
+
             builder.Services.AddControllers();
 
             builder.Services.AddEndpointsApiExplorer();
@@ -176,19 +184,36 @@ internal class Program
             app.UseStaticFiles();
             app.UseSerilogRequestLogging(); // Log HTTP request pipeline
 
-            if (app.Environment.IsDevelopment())
+            // Enable Swagger for all environments for testing
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
             {
-                app.UseSwagger();
-                app.UseSwaggerUI(c =>
+                c.SwaggerEndpoint("/swagger/AdminAPI/swagger.json", "Admin API");
+                c.DisplayOperationId();
+                c.DisplayRequestDuration();
+                if (app.Environment.IsDevelopment())
                 {
-                    c.SwaggerEndpoint("/swagger/AdminAPI/swagger.json", "Admin API");
-                    c.DisplayOperationId();
-                    c.DisplayRequestDuration();
                     c.InjectStylesheet("/swagger-custom.css");
-                });
-            }
+                }
+            });
 
             app.UseCors(VietokemanPolicy);
+
+            // Health check endpoints
+            app.MapHealthChecks("/health", new HealthCheckOptions
+            {
+                ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+            });
+            app.MapHealthChecks("/health/ready", new HealthCheckOptions
+            {
+                Predicate = check => check.Tags.Contains("ready"),
+                ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+            });
+            app.MapHealthChecks("/health/live", new HealthCheckOptions
+            {
+                Predicate = _ => false,
+                ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+            });
 
             app.UseHttpsRedirection();
             app.UseAuthentication();
