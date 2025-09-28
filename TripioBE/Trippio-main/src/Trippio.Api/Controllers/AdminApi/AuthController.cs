@@ -84,7 +84,7 @@ namespace Trippio.Api.Controllers.AdminApi
             }
 
             // Check if this is first login and email is not verified
-            if (user.IsFirstLogin && !user.IsEmailVerified)
+            if (!user.IsEmailVerified)
             {
                 // Generate OTP for email verification
                 var otp = GenerateOtp();
@@ -101,7 +101,6 @@ namespace Trippio.Api.Controllers.AdminApi
                     Message = "Email verification required for first login. OTP has been sent to your email.",
                     RequireEmailVerification = true,
                     RequirePhoneVerification = false,
-                    Email = user.Email
                 });
             }
 
@@ -221,7 +220,6 @@ namespace Trippio.Api.Controllers.AdminApi
                     Message = "Registration successful. Please verify your phone number with the OTP sent via SMS.",
                     RequireEmailVerification = false,
                     RequirePhoneVerification = true,
-                    PhoneNumber = user.PhoneNumber
                 });
             }
 
