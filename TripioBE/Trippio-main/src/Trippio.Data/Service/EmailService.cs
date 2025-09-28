@@ -1,15 +1,63 @@
+using MailKit.Net.Smtp;
+using MailKit.Security;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using MimeKit;
 using Trippio.Core.Services;
 
 namespace Trippio.Data.Service
 {
     public class EmailService : IEmailService
     {
+        private readonly IConfiguration _config;
+        private readonly ILogger<EmailService> _logger;
+
+        public EmailService(IConfiguration config, ILogger<EmailService> logger)
+        {
+            _config = config;
+            _logger = logger;
+        }
+
         public async Task SendEmailAsync(string to, string subject, string htmlBody)
         {
-            // Implementation using your preferred email service (SendGrid, SMTP, etc.)
-            // For now, just simulate sending
-            await Task.Delay(100);
-            Console.WriteLine($"Email sent to {to}: {subject}");
+            var emailMessage = new MimeMessage();
+            emailMessage.From.Add(new MailboxAddress(
+                _config["Smtp:FromName"] ?? "Trippio",
+                _config["Smtp:FromEmail"] ?? ""
+            ));
+            emailMessage.To.Add(MailboxAddress.Parse(to));
+            emailMessage.Subject = subject;
+
+            var bodyBuilder = new BodyBuilder
+            {
+                HtmlBody = htmlBody
+            };
+            emailMessage.Body = bodyBuilder.ToMessageBody();
+
+            using var client = new SmtpClient();
+            try
+            {
+                var host = _config["Smtp:Host"];
+                var port = int.Parse(_config["Smtp:Port"] ?? "587");
+                var user = _config["Smtp:User"];
+                var pass = _config["Smtp:Pass"];
+                var useSsl = bool.Parse(_config["Smtp:UseSsl"] ?? "false");
+
+                var socketOptions = useSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
+
+                await client.ConnectAsync(host, port, socketOptions);
+                await client.AuthenticateAsync(user, pass);
+
+                await client.SendAsync(emailMessage);
+                await client.DisconnectAsync(true);
+
+                _logger.LogInformation("Email sent successfully to {To} with subject {Subject}", to, subject);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send email to {To}", to);
+                throw;
+            }
         }
 
         public async Task SendOtpEmailAsync(string to, string name, string otp)

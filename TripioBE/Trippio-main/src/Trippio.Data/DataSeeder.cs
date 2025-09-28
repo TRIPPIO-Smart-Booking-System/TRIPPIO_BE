@@ -47,7 +47,7 @@ namespace Trippio.Data
                     LockoutEnabled = false,
                     DateCreated = DateTime.UtcNow,
                     Dob = new DateTime(1990, 1, 1),
-                    IsEmailVerified = true,
+                    IsEmailVerified = false,
                     IsPhoneVerified = true,
                     IsFirstLogin = false,
                     Balance = 10000,
