@@ -12,7 +12,7 @@ using Trippio.Data;
 namespace Trippio.Data.Migrations
 {
     [DbContext(typeof(TrippioDbContext))]
-    [Migration("20250927202518_InitDb")]
+    [Migration("20250929091747_InitDb")]
     partial class InitDb
     {
         /// <inheritdoc />
