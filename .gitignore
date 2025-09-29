@@ -61,3 +61,10 @@ nunit-*.xml
 # App settings (local configuration)
 appsettings.json
 appsettings.*.json
+/TripioBE/Trippio-main/src/Trippio.Api/Dockerfile
+/TripioBE/Trippio-main/src/Trippio.Api/Program.cs
+/TripioBE/Trippio-main/src/Trippio.Core/Models/System/CreateUserRequest.cs
+/TripioBE/Trippio-main/src/docker-compose.yml
+/.gitignore
+/.gitignore
+/TripioBE/Trippio-main/src/Trippio.Core/Models/System/UpdateUserRequest.cs
