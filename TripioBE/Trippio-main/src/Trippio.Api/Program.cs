@@ -1,25 +1,27 @@
-﻿using Trippio.Api;
-using Trippio.Api.Authorization;
-using Trippio.Api.Filters;
-using Trippio.Api.Service;
-using Trippio.Core.ConfigOptions;
-using Trippio.Core.Domain.Identity;
-using Trippio.Core.SeedWorks;
-using Trippio.Data;
-using Trippio.Data.SeedWorks;
+﻿using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 using System.Text;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using HealthChecks.UI.Client;
+using Trippio.Api;
+using Trippio.Api.Authorization;
+using Trippio.Api.Filters;
+using Trippio.Api.Service;
+using Trippio.Core.ConfigOptions;
+using Trippio.Core.Domain.Identity;
+using Trippio.Core.SeedWorks;
+using Trippio.Core.Services;
+using Trippio.Data;
+using Trippio.Data.SeedWorks;
+using Trippio.Data.Service;
 
 internal class Program
 {
@@ -114,8 +116,8 @@ internal class Program
             builder.Services.AddScoped<Trippio.Core.Services.IEmailService, Trippio.Data.Service.EmailService>();
 
             // Register SMS Service
-            builder.Services.AddScoped<Trippio.Core.Services.ISmsService, Trippio.Data.Service.SmsService>();
-
+            builder.Services.Configure<TwilioSettings>(builder.Configuration.GetSection("Twilio"));
+            builder.Services.AddScoped<ISmsService, SmsService>();
             // Add Health Checks
             builder.Services.AddHealthChecks()
                 .AddSqlServer(connectionString, name: "sql-server")
@@ -184,18 +186,17 @@ internal class Program
             app.UseStaticFiles();
             app.UseSerilogRequestLogging(); // Log HTTP request pipeline
 
-            // Enable Swagger for all environments for testing
-            app.UseSwagger();
-            app.UseSwaggerUI(c =>
+            if (app.Environment.IsDevelopment())
             {
-                c.SwaggerEndpoint("/swagger/AdminAPI/swagger.json", "Admin API");
-                c.DisplayOperationId();
-                c.DisplayRequestDuration();
-                if (app.Environment.IsDevelopment())
+                app.UseSwagger();
+                app.UseSwaggerUI(c =>
                 {
+                    c.SwaggerEndpoint("/swagger/AdminAPI/swagger.json", "Admin API");
+                    c.DisplayOperationId();
+                    c.DisplayRequestDuration();
                     c.InjectStylesheet("/swagger-custom.css");
-                }
-            });
+                });
+            }
 
             app.UseCors(VietokemanPolicy);
 
