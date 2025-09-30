@@ -1,46 +1,93 @@
-services:
-  # Development overrides
-  trippio-sqlserver:
-    environment:
-      - MSSQL_PID=Developer  # Use Developer edition for development
-    volumes:
-      - sqlserver_dev_data:/var/opt/mssql
-    healthcheck:
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 5s
+version: "3.9"
 
+services:
+  # =========================
+  # Database section
+  # =========================
+  trippio-sqlserver:
+    image: mcr.microsoft.com/mssql/server:2017-latest
+    container_name: trippio-sqlserver
+    environment:
+      - SA_PASSWORD=Strong!Pass123
+      - ACCEPT_EULA=Y
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - trippio_network
+    restart: unless-stopped
+    healthcheck:   # ✅ CHỈNH SỬA healthcheck (trước đây chỉ "sleep 5")
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P Strong!Pass123 -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  # =========================
+  # API section
+  # =========================
   trippio.api:
+    image: ${DOCKER_REGISTRY-}trippio-api:${PLATFORM:-linux}-${TAG:-latest}
+    container_name: trippio-api
+    build:
+      context: .
+      dockerfile: Trippio.Api/Dockerfile
     environment:
       - DOTNET_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:7142
-      - ConnectionStrings__DefaultConnection=Server=trippio-sqlserver,1433;Database=TrippioDB;User Id=sa;Password=Strong!Pass123;TrustServerCertificate=True;Encrypt=True;
-      - Logging__LogLevel__Default=Debug
-      - Logging__LogLevel__Microsoft.AspNetCore=Information
-    volumes:
-      # Source code mounting for hot-reload (if needed)
-      - ./logs:/app/logs
+      # ✅ CHỈNH connection string: bỏ Encrypt=True, giữ TrustServerCertificate
+      - ConnectionStrings__DefaultConnection=Server=trippio-sqlserver,1433;Database=TrippioDB;User Id=sa;Password=Strong!Pass123;Encrypt=False;TrustServerCertificate=True;
     ports:
       - "7142:7142"
-      - "7143:7143"  # HTTPS port for development
+    networks:
+      - trippio_network
+    restart: unless-stopped
+    depends_on:   # ✅ THÊM depends_on để chờ SQL Server ready
+      trippio-sqlserver:
+        condition: service_healthy
     healthcheck:
-      interval: 60s
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7142/swagger || exit 1"]
+      interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 30s
+      retries: 5
+      start_period: 90s
 
-  # Development tools
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: trippio-mailhog
+  # =========================
+  # Infrastructure section
+  # =========================
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: trippio-portainer
     ports:
-      - "1025:1025"  # SMTP port
-      - "8025:8025"  # Web UI port
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer_data:/data
     networks:
       - trippio_network
     restart: unless-stopped
 
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: trippio-mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - trippio_network
+    restart: unless-stopped
+
+# =========================
+# Networks & Volumes
+# =========================
+networks:
+  trippio_network:
+    name: trippio_network
+    driver: bridge
+
 volumes:
-  sqlserver_dev_data:
-    name: trippio_sqlserver_dev_data
+  sqlserver_data:
+    name: trippio_sqlserver_data
+  portainer_data:
+    name: trippio_portainer_data
