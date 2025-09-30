@@ -1,6 +1,12 @@
 ﻿using AutoMapper;
+using Trippio.Core.Domain.Entities;
 using Trippio.Core.Domain.Identity;
 using Trippio.Core.Models.Auth;
+using Trippio.Core.Models.Basket;
+using Trippio.Core.Models.Booking;
+using Trippio.Core.Models.Order;
+using Trippio.Core.Models.Payment;
+using Trippio.Core.Models.Product;
 using Trippio.Core.Models.System;
 
 namespace Trippio.Core.Mappings
@@ -45,6 +51,27 @@ namespace Trippio.Core.Mappings
 
             CreateMap<CreateUserRequest, AppUser>();
             CreateMap<UpdateUserRequest, AppUser>();
+
+            // Product mappings
+            CreateMap<Product, ProductDto>()
+                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category.Name));
+
+            // Category mappings  
+            CreateMap<Category, CategoryDto>();
+
+            // Order mappings
+            CreateMap<Order, OrderDto>();
+            CreateMap<OrderItem, OrderItemDto>()
+                .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product.Name));
+
+            // Booking mappings
+            CreateMap<Booking, BookingDto>();
+
+            // Payment mappings
+            CreateMap<Payment, PaymentDto>();
+
+            // Basket mappings
+            CreateMap<Basket, BasketDto>();
         }
     }
 }

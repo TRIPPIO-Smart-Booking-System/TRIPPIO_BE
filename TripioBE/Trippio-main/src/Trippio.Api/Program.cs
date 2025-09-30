@@ -104,20 +104,21 @@ internal class Program
             builder.Services.AddScoped(typeof(IRepository<,>), typeof(RepositoryBase<,>));
             builder.Services.AddScoped<DataSeeder>();
 
-            //var services = typeof(PostRepository).Assembly.GetTypes()
-            //    .Where(x => x.GetInterfaces()
-            //        .Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRepository<,>))
-            //        && !x.IsAbstract && x.IsClass && x != typeof(RepositoryBase<,>));
+            // Register Repositories
+            builder.Services.AddScoped<Trippio.Core.Repositories.IProductRepository, Trippio.Data.Repositories.ProductRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.IOrderRepository, Trippio.Data.Repositories.OrderRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.IBookingRepository, Trippio.Data.Repositories.BookingRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.IPaymentRepository, Trippio.Data.Repositories.PaymentRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.IBasketRepository, Trippio.Data.Repositories.BasketRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.ICategoryRepository, Trippio.Data.Repositories.CategoryRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.IFeedbackRepository, Trippio.Data.Repositories.FeedbackRepository>();
 
-            //foreach (var service in services)
-            //{
-            //    var allInterfaces = service.GetInterfaces();
-            //    var directInterface = allInterfaces.Except(allInterfaces.SelectMany(t => t.GetInterfaces())).FirstOrDefault();
-            //    if (directInterface != null)
-            //    {
-            //        builder.Services.Add(new ServiceDescriptor(directInterface, service, ServiceLifetime.Scoped));
-            //    }
-            //}
+            // Register Services
+            builder.Services.AddScoped<Trippio.Core.Services.IProductService, Trippio.Data.Services.ProductService>();
+            //builder.Services.AddScoped<Trippio.Core.Services.IOrderService, Trippio.Data.Services.OrderService>();
+            //builder.Services.AddScoped<Trippio.Core.Services.IBookingService, Trippio.Data.Services.BookingService>();
+            //builder.Services.AddScoped<Trippio.Core.Services.IPaymentService, Trippio.Data.Services.PaymentService>();
+            //builder.Services.AddScoped<Trippio.Core.Services.IBasketService, Trippio.Data.Services.BasketService>();
 
             builder.Services.AddAutoMapper(typeof(Trippio.Core.Mappings.AutoMapping));
 
