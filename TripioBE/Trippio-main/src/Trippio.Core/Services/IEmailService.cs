@@ -8,11 +8,11 @@ namespace Trippio.Core.Services
     }
 }
 
-namespace Trippio.Core.Services
-{
-    public interface ISmsService
-    {
-        Task SendSmsAsync(string phoneNumber, string message);
-        Task SendPhoneOtpAsync(string phoneNumber, string name, string otp);
-    }
-}
+//namespace Trippio.Core.Services
+//{
+//    public interface ISmsService
+//    {
+//        Task SendSmsAsync(string phoneNumber, string message);
+//        Task SendPhoneOtpAsync(string phoneNumber, string name, string otp);
+//    }
+//}

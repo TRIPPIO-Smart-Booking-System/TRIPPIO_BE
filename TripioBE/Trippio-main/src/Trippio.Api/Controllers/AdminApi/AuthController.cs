@@ -27,7 +27,7 @@ namespace Trippio.Api.Controllers.AdminApi
         private readonly IMapper _mapper;
         private readonly JwtTokenSettings _jwtTokenSettings;
         private readonly IEmailService _emailService;
-        private readonly ISmsService _smsService;
+        //private readonly ISmsService _smsService;
 
         public AuthController(
             UserManager<AppUser> userManager,
@@ -36,8 +36,8 @@ namespace Trippio.Api.Controllers.AdminApi
             RoleManager<AppRole> roleManager,
             IMapper mapper,
             IOptions<JwtTokenSettings> jwtTokenSettings,
-            IEmailService emailService,
-            ISmsService smsService)
+            IEmailService emailService)
+            //ISmsService smsService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -46,7 +46,7 @@ namespace Trippio.Api.Controllers.AdminApi
             _mapper = mapper;
             _jwtTokenSettings = jwtTokenSettings.Value;
             _emailService = emailService;
-            _smsService = smsService;
+            //_smsService = smsService;
         }
 
         [HttpPost("login")]
@@ -191,12 +191,12 @@ namespace Trippio.Api.Controllers.AdminApi
                 PhoneNumber = request.PhoneNumber,
                 FirstName = request.FirstName,
                 LastName = request.LastName,
-                IsActive = false, // Not active until phone is verified
+                //IsActive = false, // Not active until phone is verified
                 DateCreated = DateTime.UtcNow,
                 Dob = request.DateOfBirth,
                 IsFirstLogin = true,
                 IsEmailVerified = false,
-                IsPhoneVerified = false,
+                //IsPhoneVerified = false,
                 Balance = 0,
                 LoyaltyAmountPerPost = 1000
             };
@@ -205,62 +205,63 @@ namespace Trippio.Api.Controllers.AdminApi
 
             if (result.Succeeded)
             {
-                // Generate OTP for phone verification
-                var otp = GenerateOtp();
-                user.PhoneOtp = otp;
-                user.PhoneOtpExpiry = DateTime.UtcNow.AddMinutes(5); // SMS OTP expires in 5 minutes
-                await _userManager.UpdateAsync(user);
+                //    // Generate OTP for phone verification
+                //    var otp = GenerateOtp();
+                //    user.PhoneOtp = otp;
+                //    user.PhoneOtpExpiry = DateTime.UtcNow.AddMinutes(5); // SMS OTP expires in 5 minutes
+                //    await _userManager.UpdateAsync(user);
 
-                // Send OTP SMS
-                await _smsService.SendPhoneOtpAsync(user.PhoneNumber!, user.GetFullName()!, otp);
+                //    // Send OTP SMS
+                //    await _smsService.SendPhoneOtpAsync(user.PhoneNumber!, user.GetFullName()!, otp);
 
-                return Ok(new OtpVerificationResult
-                {
-                    IsSuccess = false,
-                    Message = "Registration successful. Please verify your phone number with the OTP sent via SMS.",
-                    RequireEmailVerification = false,
-                    RequirePhoneVerification = true,
-                });
+                //    return Ok(new OtpVerificationResult
+                //    {
+                //        IsSuccess = false,
+                //        Message = "Registration successful. Please verify your phone number with the OTP sent via SMS.",
+                //        RequireEmailVerification = false,
+                //        RequirePhoneVerification = true,
+                //    });
+                return Ok(new { message = "Registration successful" });
             }
 
             return BadRequest(result.Errors);
         }
 
-        [HttpPost("verify-phone")]
-        public async Task<IActionResult> VerifyPhone([FromBody] VerifyPhoneRequest request)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+        //[HttpPost("verify-phone")]
+        //public async Task<IActionResult> VerifyPhone([FromBody] VerifyPhoneRequest request)
+        //{
+        //    if (!ModelState.IsValid)
+        //        return BadRequest(ModelState);
 
-            var user = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == request.PhoneNumber);
-            if (user == null)
-            {
-                return BadRequest(new { message = "User not found" });
-            }
+        //    var user = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == request.PhoneNumber);
+        //    if (user == null)
+        //    {
+        //        return BadRequest(new { message = "User not found" });
+        //    }
 
-            if (user.IsPhoneVerified)
-            {
-                return BadRequest(new { message = "Phone number already verified" });
-            }
+        //    if (user.IsPhoneVerified)
+        //    {
+        //        return BadRequest(new { message = "Phone number already verified" });
+        //    }
 
-            if (user.PhoneOtp != request.Otp || user.PhoneOtpExpiry < DateTime.UtcNow)
-            {
-                return BadRequest(new { message = "Invalid or expired OTP" });
-            }
+        //    if (user.PhoneOtp != request.Otp || user.PhoneOtpExpiry < DateTime.UtcNow)
+        //    {
+        //        return BadRequest(new { message = "Invalid or expired OTP" });
+        //    }
 
-            // Verify phone and activate account
-            user.IsPhoneVerified = true;
-            user.PhoneOtp = null;
-            user.PhoneOtpExpiry = null;
-            user.IsActive = true; // Activate account after phone verification
-            await _userManager.UpdateAsync(user);
+        //    // Verify phone and activate account
+        //    user.IsPhoneVerified = true;
+        //    user.PhoneOtp = null;
+        //    user.PhoneOtpExpiry = null;
+        //    user.IsActive = true; // Activate account after phone verification
+        //    await _userManager.UpdateAsync(user);
 
-            return Ok(new
-            {
-                message = "Phone number verified successfully. You can now login to your account.",
-                username = user.UserName
-            });
-        }
+        //    return Ok(new
+        //    {
+        //        message = "Phone number verified successfully. You can now login to your account.",
+        //        username = user.UserName
+        //    });
+        //}
 
         [HttpPost("verify-email")]
         public async Task<ActionResult<LoginResponse>> VerifyEmail([FromBody] VerifyEmailRequest request)
@@ -301,34 +302,34 @@ namespace Trippio.Api.Controllers.AdminApi
             return Ok(loginResponse);
         }
 
-        [HttpPost("resend-phone-otp")]
-        public async Task<IActionResult> ResendPhoneOtp([FromBody] ResendPhoneOtpRequest request)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+        //[HttpPost("resend-phone-otp")]
+        //public async Task<IActionResult> ResendPhoneOtp([FromBody] ResendPhoneOtpRequest request)
+        //{
+        //    if (!ModelState.IsValid)
+        //        return BadRequest(ModelState);
 
-            var user = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == request.PhoneNumber);
-            if (user == null)
-            {
-                return BadRequest(new { message = "User not found" });
-            }
+        //    var user = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == request.PhoneNumber);
+        //    if (user == null)
+        //    {
+        //        return BadRequest(new { message = "User not found" });
+        //    }
 
-            if (user.IsPhoneVerified)
-            {
-                return BadRequest(new { message = "Phone number already verified" });
-            }
+        //    if (user.IsPhoneVerified)
+        //    {
+        //        return BadRequest(new { message = "Phone number already verified" });
+        //    }
 
-            // Generate new OTP
-            var otp = GenerateOtp();
-            user.PhoneOtp = otp;
-            user.PhoneOtpExpiry = DateTime.UtcNow.AddMinutes(5);
-            await _userManager.UpdateAsync(user);
+        //    // Generate new OTP
+        //    var otp = GenerateOtp();
+        //    user.PhoneOtp = otp;
+        //    user.PhoneOtpExpiry = DateTime.UtcNow.AddMinutes(5);
+        //    await _userManager.UpdateAsync(user);
 
-            // Send OTP SMS
-            await _smsService.SendPhoneOtpAsync(user.PhoneNumber!, user.GetFullName()!, otp);
+        //    // Send OTP SMS
+        //    await _smsService.SendPhoneOtpAsync(user.PhoneNumber!, user.GetFullName()!, otp);
 
-            return Ok(new { message = "OTP has been resent to your phone" });
-        }
+        //    return Ok(new { message = "OTP has been resent to your phone" });
+        //}
 
         [HttpPost("resend-otp")]
         public async Task<IActionResult> ResendOtp([FromBody] ResendOtpRequest request)
