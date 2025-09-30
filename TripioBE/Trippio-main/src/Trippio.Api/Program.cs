@@ -49,10 +49,22 @@ internal class Program
             builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
             builder.Services.AddCors(o => o.AddPolicy(VietokemanPolicy, policy =>
             {
-                policy.AllowAnyMethod()
-                      .AllowAnyHeader()
-                      .WithOrigins(configuration.GetSection("AllowedOrigins").Get<string[]>())
-                      .AllowCredentials();
+                var allowedOrigins = configuration.GetSection("AllowedOrigins").Get<string[]>();
+                if (allowedOrigins != null && allowedOrigins.Length > 0)
+                {
+                    policy.WithOrigins(allowedOrigins)
+                          .AllowAnyMethod()
+                          .AllowAnyHeader()
+                          .AllowCredentials();
+                }
+                else
+                {
+                    // Fallback for development
+                    policy.WithOrigins("http://localhost:3000", "http://localhost:4200")
+                          .AllowAnyMethod()
+                          .AllowAnyHeader()
+                          .AllowCredentials();
+                }
             }));
 
 
@@ -187,6 +199,9 @@ internal class Program
             app.UseStaticFiles();
             app.UseSerilogRequestLogging(); // Log HTTP request pipeline
 
+            // CORS must be placed after UseStaticFiles and before UseAuthentication
+            app.UseCors(VietokemanPolicy);
+
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
@@ -218,8 +233,6 @@ internal class Program
             });
 
             app.UseHttpsRedirection();
-            app.UseCors(VietokemanPolicy);
-
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
