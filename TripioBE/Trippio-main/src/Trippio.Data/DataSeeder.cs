@@ -51,7 +51,6 @@ namespace Trippio.Data
                     DateCreated = DateTime.UtcNow,
                     Dob = new DateTime(1990, 1, 1),
                     IsEmailVerified = false,
-                    IsPhoneVerified = false,
                     IsFirstLogin = true,
                     Balance = 10000,
                     LoyaltyAmountPerPost = 1000

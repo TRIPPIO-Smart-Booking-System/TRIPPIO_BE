@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Trippio.Data;
 
@@ -11,9 +12,11 @@ using Trippio.Data;
 namespace Trippio.Data.Migrations
 {
     [DbContext(typeof(TrippioDbContext))]
-    partial class TrippioDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250930161928_AddAllEntities")]
+    partial class AddAllEntities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -827,6 +830,9 @@ namespace Trippio.Data.Migrations
                     b.Property<bool>("IsFirstLogin")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsPhoneVerified")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime?>("LastLoginDate")
                         .HasColumnType("datetime2");
 
@@ -862,6 +868,12 @@ namespace Trippio.Data.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
+
+                    b.Property<string>("PhoneOtp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("PhoneOtpExpiry")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("RefreshToken")
                         .HasColumnType("nvarchar(max)");

@@ -24,7 +24,6 @@ namespace Trippio.Core.Mappings
                 .ForMember(dest => dest.DateCreated, opt => opt.MapFrom(src => src.DateCreated))
                 .ForMember(dest => dest.Dob, opt => opt.MapFrom(src => src.Dob))
                 .ForMember(dest => dest.IsEmailVerified, opt => opt.MapFrom(src => src.IsEmailVerified))
-                .ForMember(dest => dest.IsPhoneVerified, opt => opt.MapFrom(src => src.IsPhoneVerified))
                 .ForMember(dest => dest.IsFirstLogin, opt => opt.MapFrom(src => src.IsFirstLogin))
                 .ForMember(dest => dest.Roles, opt => opt.Ignore()); // Roles sẽ được set riêng
 
@@ -38,10 +37,9 @@ namespace Trippio.Core.Mappings
                 .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.LastName))
                 .ForMember(dest => dest.Dob, opt => opt.MapFrom(src => src.DateOfBirth))
                 .ForMember(dest => dest.DateCreated, opt => opt.MapFrom(src => DateTime.UtcNow))
-                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => false))
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => false)) // ✅ Inactive until email verified
                 .ForMember(dest => dest.IsFirstLogin, opt => opt.MapFrom(src => true))
                 .ForMember(dest => dest.IsEmailVerified, opt => opt.MapFrom(src => false))
-                .ForMember(dest => dest.IsPhoneVerified, opt => opt.MapFrom(src => false))
                 .ForMember(dest => dest.Balance, opt => opt.MapFrom(src => 0))
                 .ForMember(dest => dest.LoyaltyAmountPerPost, opt => opt.MapFrom(src => 1000));
 

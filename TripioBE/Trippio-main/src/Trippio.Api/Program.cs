@@ -128,9 +128,6 @@ internal class Program
             // Register Email Service
             builder.Services.AddScoped<Trippio.Core.Services.IEmailService, Trippio.Data.Service.EmailService>();
 
-            // Register SMS Service
-            builder.Services.Configure<TwilioSettings>(builder.Configuration.GetSection("Twilio"));
-            builder.Services.AddScoped<ISmsService, SmsService>();
             // Add Health Checks
             builder.Services.AddHealthChecks()
                 .AddSqlServer(connectionString, name: "sql-server")

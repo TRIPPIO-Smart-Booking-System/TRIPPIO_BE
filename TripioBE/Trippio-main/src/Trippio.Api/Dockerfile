@@ -19,8 +19,11 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 # Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:7142/health || exit 1
 
 ENTRYPOINT ["dotnet", "Trippio.Api.dll"]

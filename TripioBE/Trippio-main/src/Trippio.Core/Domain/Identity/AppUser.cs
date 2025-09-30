@@ -40,11 +40,6 @@ namespace Trippio.Core.Domain.Identity
         public string? EmailOtp { get; set; }
         public DateTime? EmailOtpExpiry { get; set; }
 
-        // Phone verification fields
-        public bool IsPhoneVerified { get; set; } = false;
-        public string? PhoneOtp { get; set; }
-        public DateTime? PhoneOtpExpiry { get; set; }
-
         public bool IsFirstLogin { get; set; } = true;
 
         public string? GetFullName() => $"{FirstName} {LastName}";
