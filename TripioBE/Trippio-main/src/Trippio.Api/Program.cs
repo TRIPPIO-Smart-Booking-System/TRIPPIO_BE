@@ -47,13 +47,14 @@ internal class Program
 
             builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
             builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
-            builder.Services.AddCors(o => o.AddPolicy(VietokemanPolicy, builder =>
+            builder.Services.AddCors(o => o.AddPolicy(VietokemanPolicy, policy =>
             {
-                builder.AllowAnyMethod()
-                .AllowAnyHeader()
-                .WithOrigins(configuration["AllowedOrigins"])
-                .AllowCredentials();
+                policy.AllowAnyMethod()
+                      .AllowAnyHeader()
+                      .WithOrigins(configuration.GetSection("AllowedOrigins").Get<string[]>())
+                      .AllowCredentials();
             }));
+
 
             builder.Services.AddDbContext<TrippioDbContext>(options =>
                 options.UseSqlServer(connectionString));
@@ -132,10 +133,10 @@ internal class Program
                 {
                     return apiDesc.TryGetMethodInfo(out MethodInfo methodInfo) ? methodInfo.Name : null;
                 });
-                c.SwaggerDoc("AdminAPI", new OpenApiInfo
+                c.SwaggerDoc("TrippioAPI", new OpenApiInfo
                 {
                     Version = "v1",
-                    Title = "API for Tripio",
+                    Title = "API for Trippio",
                     Description = "API for Trippio core domain. This domain keeps track of campaigns, campaign rules, and campaign execution."
                 });
                 c.ParameterFilter<SwaggerNullableParameterFilter>();
@@ -191,14 +192,14 @@ internal class Program
                 app.UseSwagger();
                 app.UseSwaggerUI(c =>
                 {
-                    c.SwaggerEndpoint("/swagger/AdminAPI/swagger.json", "Admin API");
+                    c.SwaggerEndpoint("/swagger/TrippioAPI/swagger.json", "Trippio API");
+                    c.RoutePrefix = "swagger"; // This makes Swagger UI available at /swagger
                     c.DisplayOperationId();
                     c.DisplayRequestDuration();
                     c.InjectStylesheet("/swagger-custom.css");
                 });
             }
 
-            app.UseCors(VietokemanPolicy);
 
             // Health check endpoints
             app.MapHealthChecks("/health", new HealthCheckOptions
@@ -217,6 +218,8 @@ internal class Program
             });
 
             app.UseHttpsRedirection();
+            app.UseCors(VietokemanPolicy);
+
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();

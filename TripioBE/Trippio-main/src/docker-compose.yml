@@ -41,20 +41,23 @@ services:
       context: .
       dockerfile: Trippio.Api/Dockerfile
     environment:
-      - DOTNET_ENVIRONMENT=Production
+      - DOTNET_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:7142
       - ConnectionStrings__DefaultConnection=Server=trippio-sqlserver,1433;Database=TrippioDB;User Id=sa;Password=Strong!Pass123;TrustServerCertificate=True;Encrypt=True;
     ports:
       - "7142:7142"
+    depends_on:
+      trippio-sqlserver:
+        condition: service_healthy
     networks:
       - trippio_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7142/health"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7142/swagger || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 90s
 
 # Network section
 networks:
