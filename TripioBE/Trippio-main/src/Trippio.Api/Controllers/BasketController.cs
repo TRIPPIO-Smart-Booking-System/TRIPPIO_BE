@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Trippio.Core.Models;
-using Trippio.Core.Models.Basket;
+using Trippio.Core.Models.Common;
 using Trippio.Core.Services;
 
 namespace Trippio.Api.Controllers
@@ -27,7 +27,7 @@ namespace Trippio.Api.Controllers
         {
             var userId = GetCurrentUserId();
             var result = await _basketService.GetByUserIdAsync(userId);
-            return StatusCode(result.StatusCode, result);
+            return StatusCode(result.Code, result);
         }
 
         /// <summary>
@@ -44,7 +44,7 @@ namespace Trippio.Api.Controllers
 
             var userId = GetCurrentUserId();
             var result = await _basketService.AddItemAsync(userId, itemDto);
-            return StatusCode(result.StatusCode, result);
+            return StatusCode(result.Code, result);
         }
 
         /// <summary>
@@ -61,7 +61,7 @@ namespace Trippio.Api.Controllers
 
             var userId = GetCurrentUserId();
             var result = await _basketService.UpdateItemQuantityAsync(userId, itemDto);
-            return StatusCode(result.StatusCode, result);
+            return StatusCode(result.Code, result);
         }
 
         /// <summary>
@@ -78,7 +78,7 @@ namespace Trippio.Api.Controllers
 
             var userId = GetCurrentUserId();
             var result = await _basketService.RemoveItemAsync(userId, itemDto);
-            return StatusCode(result.StatusCode, result);
+            return StatusCode(result.Code, result);
         }
 
         /// <summary>
@@ -89,7 +89,7 @@ namespace Trippio.Api.Controllers
         {
             var userId = GetCurrentUserId();
             var result = await _basketService.ClearBasketAsync(userId);
-            return StatusCode(result.StatusCode, result);
+            return StatusCode(result.Code, result);
         }
 
         /// <summary>
@@ -100,7 +100,7 @@ namespace Trippio.Api.Controllers
         {
             var userId = GetCurrentUserId();
             var result = await _basketService.GetItemCountAsync(userId);
-            return StatusCode(result.StatusCode, result);
+            return StatusCode(result.Code, result);
         }
 
         /// <summary>
@@ -111,7 +111,7 @@ namespace Trippio.Api.Controllers
         {
             var userId = GetCurrentUserId();
             var result = await _basketService.GetTotalAsync(userId);
-            return StatusCode(result.StatusCode, result);
+            return StatusCode(result.Code, result);
         }
 
         private Guid GetCurrentUserId()

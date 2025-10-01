@@ -6,11 +6,9 @@ namespace Trippio.Core.Repositories
 {
     public interface IFeedbackRepository : IRepository<Feedback, Guid>
     {
-        Task<IEnumerable<Feedback>> GetByProductIdAsync(int productId);
-        Task<IEnumerable<Feedback>> GetByUserIdAsync(Guid userId);
-        Task<PageResult<Feedback>> GetPagedByProductIdAsync(int productId, int pageIndex, int pageSize);
-        Task<double> GetAverageRatingByProductIdAsync(int productId);
-        Task<IEnumerable<Feedback>> GetTopRatedAsync(int count);
-        Task<IEnumerable<Feedback>> GetByDateRangeAsync(DateTime from, DateTime to);
+        Task<IEnumerable<Feedback>> GetByBookingIdAsync(Guid bookingId);
+        Task<PageResult<Feedback>> GetPagedByBookingIdAsync(Guid bookingId, int pageIndex, int pageSize);
+        Task<double> GetAverageRatingByBookingIdAsync(Guid bookingId);
+        Task<int> GetTotalFeedbackCountByBookingIdAsync(Guid bookingId);
     }
 }

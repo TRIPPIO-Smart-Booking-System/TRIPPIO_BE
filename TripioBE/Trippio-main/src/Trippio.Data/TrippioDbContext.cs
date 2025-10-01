@@ -21,13 +21,6 @@ namespace Trippio.Data
         public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<Notification> Notifications { get; set; }
 
-        // Product & Category
-        public DbSet<Category> Categories { get; set; }
-        public DbSet<Product> Products { get; set; }
-        public DbSet<Feedback> Feedbacks { get; set; }
-        public DbSet<Comment> Comments { get; set; }
-        public DbSet<ProductInventory> ProductInventories { get; set; }
-
         // Order
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
@@ -37,6 +30,9 @@ namespace Trippio.Data
         public DbSet<AccommodationBookingDetail> AccommodationBookingDetails { get; set; }
         public DbSet<TransportBookingDetail> TransportBookingDetails { get; set; }
         public DbSet<EntertainmentBookingDetail> EntertainmentBookingDetails { get; set; }
+        public DbSet<ExtraService> ExtraServices { get; set; }
+        public DbSet<Feedback> Feedbacks { get; set; }
+        public DbSet<Comment> Comments { get; set; }
 
         // Payment & Others
         public DbSet<Payment> Payments { get; set; }
@@ -114,32 +110,6 @@ namespace Trippio.Data
                 .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Category & Product relationships
-            builder.Entity<Product>()
-                .HasOne(p => p.Category)
-                .WithMany(c => c.Products)
-                .HasForeignKey(p => p.CategoryId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.Entity<Feedback>()
-                .HasOne(f => f.Product)
-                .WithMany(p => p.Feedbacks)
-                .HasForeignKey(f => f.ProductId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder.Entity<Comment>()
-                .HasOne(c => c.Product)
-                .WithMany(p => p.Comments)
-                .HasForeignKey(c => c.ProductId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            // ProductInventory relationship (One-to-One)
-            builder.Entity<ProductInventory>()
-                .HasOne(pi => pi.Product)
-                .WithOne(p => p.ProductInventory)
-                .HasForeignKey<ProductInventory>(pi => pi.ProductId)
-                .OnDelete(DeleteBehavior.Cascade);
-
             // Order relationships
             builder.Entity<Order>()
                 .HasOne(o => o.User)
@@ -154,9 +124,9 @@ namespace Trippio.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<OrderItem>()
-                .HasOne(oi => oi.Product)
-                .WithMany(p => p.OrderItems)
-                .HasForeignKey(oi => oi.ProductId)
+                .HasOne(oi => oi.Booking)
+                .WithMany()
+                .HasForeignKey(oi => oi.BookingId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // Booking relationships
@@ -210,6 +180,27 @@ namespace Trippio.Data
                 .HasForeignKey(b => b.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // ExtraService relationship
+            builder.Entity<ExtraService>()
+                .HasOne(es => es.Booking)
+                .WithMany(b => b.ExtraServices)
+                .HasForeignKey(es => es.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Feedback relationship
+            builder.Entity<Feedback>()
+                .HasOne(f => f.Booking)
+                .WithMany(b => b.Feedbacks)
+                .HasForeignKey(f => f.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Comment relationship
+            builder.Entity<Comment>()
+                .HasOne(c => c.Booking)
+                .WithMany(b => b.Comments)
+                .HasForeignKey(c => c.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
         }
         public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
         {
@@ -220,11 +211,17 @@ namespace Trippio.Data
             foreach (var entityEntry in entries)
             {
                 var dateCreatedProp = entityEntry.Entity.GetType().GetProperty("DateCreated");
+                var createdAtProp = entityEntry.Entity.GetType().GetProperty("CreatedAt");
+                
                 if (entityEntry.State == EntityState.Added)
                 {
                     if (dateCreatedProp != null)
                     {
                         dateCreatedProp.SetValue(entityEntry.Entity, DateTime.UtcNow);
+                    }
+                    if (createdAtProp != null)
+                    {
+                        createdAtProp.SetValue(entityEntry.Entity, DateTime.UtcNow);
                     }
                 }
 
@@ -233,7 +230,7 @@ namespace Trippio.Data
                 {
                     if (modifiedDateProp != null)
                     {
-                        modifiedDateProp.SetValue(entityEntry.Entity, DateTime.Now);
+                        modifiedDateProp.SetValue(entityEntry.Entity, DateTime.UtcNow);
                     }
                 }
             }

@@ -68,7 +68,7 @@ namespace Trippio.Api.Controllers.AdminApi
                 user = users.FirstOrDefault();
             }
 
-            if (user == null || user.IsActive == false || user.LockoutEnabled)
+            if (user == null || !user.IsActive)
             {
                 return Unauthorized(new { message = "Invalid credentials" });
             }
@@ -122,6 +122,9 @@ namespace Trippio.Api.Controllers.AdminApi
         private async Task<List<string>> GetPermissionsByUserIdAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return new List<string>();
+
             var roles = await _userManager.GetRolesAsync(user);
             var permissions = new List<string>();
             var allPermissions = new List<RoleClaimsDto>();

@@ -25,6 +25,8 @@ namespace Trippio.Core.Domain.Entities
         [MaxLength(50)]
         public required string SeatNumber { get; set; }
 
+        public int AvailableSeats { get; set; }
+
         public DateTime DateCreated { get; set; }
         public DateTime? ModifiedDate { get; set; }
 

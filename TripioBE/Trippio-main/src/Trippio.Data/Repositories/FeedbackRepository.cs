@@ -1,82 +1,59 @@
 using Microsoft.EntityFrameworkCore;
 using Trippio.Core.Domain.Entities;
-using Trippio.Core.Repositories;
 using Trippio.Core.Models;
+using Trippio.Core.Repositories;
 using Trippio.Data.SeedWorks;
 
 namespace Trippio.Data.Repositories
 {
-    public class FeedbackRepository : RepositoryBase<Feedback, int>, IFeedbackRepository
+    public class FeedbackRepository : RepositoryBase<Feedback, Guid>, IFeedbackRepository
     {
         public FeedbackRepository(TrippioDbContext context) : base(context)
         {
         }
 
-        public async Task<IEnumerable<Feedback>> GetByProductIdAsync(int productId)
+        public async Task<IEnumerable<Feedback>> GetByBookingIdAsync(Guid bookingId)
         {
             return await _context.Feedbacks
-                .Where(f => f.ProductId == productId)
-                .Include(f => f.Product)
-                .OrderByDescending(f => f.DateCreated)
+                .Where(f => f.BookingId == bookingId)
+                .OrderByDescending(f => f.CreatedAt)
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Feedback>> GetByUserIdAsync(Guid userId)
-        {
-            return await _context.Feedbacks
-                .Include(f => f.Product)
-                .OrderByDescending(f => f.DateCreated)
-                .ToListAsync();
-        }
-
-        public async Task<PageResult<Feedback>> GetPagedByProductIdAsync(int productId, int pageIndex, int pageSize)
+        public async Task<PageResult<Feedback>> GetPagedByBookingIdAsync(Guid bookingId, int pageIndex, int pageSize)
         {
             var query = _context.Feedbacks
-                .Where(f => f.ProductId == productId)
-                .Include(f => f.Product);
+                .Where(f => f.BookingId == bookingId)
+                .OrderByDescending(f => f.CreatedAt);
 
             var totalItems = await query.CountAsync();
-            var items = await query.OrderByDescending(f => f.DateCreated)
-                                  .Skip((pageIndex - 1) * pageSize)
-                                  .Take(pageSize)
-                                  .ToListAsync();
+            var items = await query
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
 
             return new PageResult<Feedback>
             {
                 Results = items,
-                RowCount = totalItems,
                 CurrentPage = pageIndex,
-                PageSize = pageSize
+                PageSize = pageSize,
+                RowCount = totalItems
             };
         }
 
-        public async Task<double> GetAverageRatingByProductIdAsync(int productId)
+        public async Task<double> GetAverageRatingByBookingIdAsync(Guid bookingId)
         {
-            var ratings = await _context.Feedbacks
-                .Where(f => f.ProductId == productId)
-                .Select(f => f.Rating)
+            var feedbacks = await _context.Feedbacks
+                .Where(f => f.BookingId == bookingId)
                 .ToListAsync();
 
-            return ratings.Any() ? ratings.Average() : 0;
+            return feedbacks.Any() ? feedbacks.Average(f => f.Rating) : 0;
         }
 
-        public async Task<IEnumerable<Feedback>> GetTopRatedAsync(int count)
+        public async Task<int> GetTotalFeedbackCountByBookingIdAsync(Guid bookingId)
         {
             return await _context.Feedbacks
-                .Include(f => f.Product)
-                .OrderByDescending(f => f.Rating)
-                .ThenByDescending(f => f.DateCreated)
-                .Take(count)
-                .ToListAsync();
-        }
-
-        public async Task<IEnumerable<Feedback>> GetByDateRangeAsync(DateTime from, DateTime to)
-        {
-            return await _context.Feedbacks
-                .Where(f => f.DateCreated >= from && f.DateCreated <= to)
-                .Include(f => f.Product)
-                .OrderByDescending(f => f.DateCreated)
-                .ToListAsync();
+                .CountAsync(f => f.BookingId == bookingId);
         }
     }
 }

@@ -13,7 +13,7 @@ namespace Trippio.Core.Domain.Entities
         public int OrderId { get; set; }
 
         [Required]
-        public int ProductId { get; set; }
+        public Guid BookingId { get; set; }
 
         [Required]
         public int Quantity { get; set; }
@@ -29,7 +29,7 @@ namespace Trippio.Core.Domain.Entities
         [ForeignKey("OrderId")]
         public virtual Order Order { get; set; } = null!;
 
-        [ForeignKey("ProductId")]
-        public virtual Product Product { get; set; } = null!;
+        [ForeignKey("BookingId")]
+        public virtual Booking Booking { get; set; } = null!;
     }
 }

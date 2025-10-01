@@ -28,6 +28,8 @@ namespace Trippio.Core.Domain.Entities
         [Required]
         public int GuestCount { get; set; }
 
+        public int AvailableRooms { get; set; }
+
         public DateTime DateCreated { get; set; }
         public DateTime? ModifiedDate { get; set; }
 

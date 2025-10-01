@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Trippio.Core.Domain.Entities
 {
-    [Table("Comments")]
-    public class Comment
+    [Table("ExtraServices")]
+    public class ExtraService
     {
         [Key]
         public Guid Id { get; set; } = Guid.NewGuid();
@@ -13,10 +13,17 @@ namespace Trippio.Core.Domain.Entities
         public Guid BookingId { get; set; }
 
         [Required]
-        [MaxLength(2000)]
-        public required string Content { get; set; }
+        [MaxLength(200)]
+        public required string Name { get; set; }
 
-        public DateTime CreatedAt { get; set; }
+        [Required]
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal Price { get; set; }
+
+        public int Quantity { get; set; } = 1;
+
+        public DateTime DateCreated { get; set; }
+        public DateTime? ModifiedDate { get; set; }
 
         // Navigation Properties
         [ForeignKey("BookingId")]

@@ -7,10 +7,10 @@ namespace Trippio.Core.Domain.Entities
     public class Feedback
     {
         [Key]
-        public int Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
-        public int ProductId { get; set; }
+        public Guid BookingId { get; set; }
 
         [Required]
         [Range(1, 5)]
@@ -19,11 +19,10 @@ namespace Trippio.Core.Domain.Entities
         [MaxLength(1000)]
         public string? Comment { get; set; }
 
-        public DateTime DateCreated { get; set; }
-        public DateTime? ModifiedDate { get; set; }
+        public DateTime CreatedAt { get; set; }
 
         // Navigation Properties
-        [ForeignKey("ProductId")]
-        public virtual Product Product { get; set; } = null!;
+        [ForeignKey("BookingId")]
+        public virtual Booking Booking { get; set; } = null!;
     }
 }

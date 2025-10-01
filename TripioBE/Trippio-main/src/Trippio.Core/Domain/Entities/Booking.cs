@@ -38,6 +38,9 @@ namespace Trippio.Core.Domain.Entities
         public virtual ICollection<AccommodationBookingDetail> AccommodationBookingDetails { get; set; } = new List<AccommodationBookingDetail>();
         public virtual ICollection<TransportBookingDetail> TransportBookingDetails { get; set; } = new List<TransportBookingDetail>();
         public virtual ICollection<EntertainmentBookingDetail> EntertainmentBookingDetails { get; set; } = new List<EntertainmentBookingDetail>();
+        public virtual ICollection<ExtraService> ExtraServices { get; set; } = new List<ExtraService>();
+        public virtual ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
+        public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
         public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
     }
 }
