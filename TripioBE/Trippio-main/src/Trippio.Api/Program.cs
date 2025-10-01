@@ -127,6 +127,7 @@ internal class Program
             builder.Services.AddScoped<Trippio.Core.Services.IEmailService, Trippio.Data.Service.EmailService>();
 
             // Add Health Checks
+
             builder.Services.AddHealthChecks()
                 .AddSqlServer(connectionString, name: "sql-server")
                 .AddCheck("self", () => HealthCheckResult.Healthy("API is running"));
