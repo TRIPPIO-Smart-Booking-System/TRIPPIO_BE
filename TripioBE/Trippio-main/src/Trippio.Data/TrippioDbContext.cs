@@ -1,4 +1,5 @@
 ﻿using Trippio.Core.Domain.Identity;
+using Trippio.Core.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -11,8 +12,48 @@ namespace Trippio.Data
         {
         }
 
+        // Customer & Address
+        public DbSet<Customer> Customers { get; set; }
+        public DbSet<Address> Addresses { get; set; }
+
+        // Chat & Notification
+        public DbSet<Conversation> Conversations { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+
+        // Master Data - Accommodation
+        public DbSet<Hotel> Hotels { get; set; }
+        public DbSet<Room> Rooms { get; set; }
+
+        // Master Data - Transport
+        public DbSet<Transport> Transports { get; set; }
+        public DbSet<TransportTrip> TransportTrips { get; set; }
+
+        // Master Data - Entertainment
+        public DbSet<Show> Shows { get; set; }
+
+        // Order
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderItem> OrderItems { get; set; }
+
+        // Booking
+        public DbSet<Booking> Bookings { get; set; }
+        public DbSet<AccommodationBookingDetail> AccommodationBookingDetails { get; set; }
+        public DbSet<TransportBookingDetail> TransportBookingDetails { get; set; }
+        public DbSet<EntertainmentBookingDetail> EntertainmentBookingDetails { get; set; }
+        public DbSet<ExtraService> ExtraServices { get; set; }
+        public DbSet<Feedback> Feedbacks { get; set; }
+        public DbSet<Comment> Comments { get; set; }
+
+        // Payment & Others
+        public DbSet<Payment> Payments { get; set; }
+        public DbSet<ScheduledJob> ScheduledJobs { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
+            base.OnModelCreating(builder);
+
+            // Identity tables configuration
             builder.Entity<IdentityUserClaim<Guid>>().ToTable("AppUserClaims")
            .HasKey(x => x.Id);
 
@@ -23,8 +64,178 @@ namespace Trippio.Data
                    .HasKey(x => new { x.RoleId, x.UserId });
 
             builder.Entity<IdentityUserLogin<Guid>>().ToTable("AppUserLogins")
-                   .HasKey(x => new { x.UserId });
-            builder.Entity<IdentityUserToken<Guid>>().HasNoKey();
+                   .HasKey(x => new { x.UserId, x.LoginProvider });
+
+            builder.Entity<IdentityUserToken<Guid>>().ToTable("AppUserTokens")
+                   .HasKey(x => new { x.UserId, x.LoginProvider, x.Name });
+
+            // Customer & Address relationships
+            builder.Entity<Customer>()
+                .HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Address>()
+                .HasOne(a => a.Customer)
+                .WithMany(c => c.Addresses)
+                .HasForeignKey(a => a.CustomerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Conversation & ChatMessage relationships
+            builder.Entity<Conversation>()
+                .HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Conversation>()
+                .HasOne(c => c.Coach)
+                .WithMany()
+                .HasForeignKey(c => c.CoachId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<ChatMessage>()
+                .HasOne(cm => cm.Conversation)
+                .WithMany(c => c.ChatMessages)
+                .HasForeignKey(cm => cm.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ChatMessage>()
+                .HasOne(cm => cm.SenderUser)
+                .WithMany()
+                .HasForeignKey(cm => cm.SenderUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<ChatMessage>()
+                .HasOne(cm => cm.ReceiverUser)
+                .WithMany()
+                .HasForeignKey(cm => cm.ReceiverUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Notification relationship
+            builder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Order relationships
+            builder.Entity<Order>()
+                .HasOne(o => o.User)
+                .WithMany()
+                .HasForeignKey(o => o.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<OrderItem>()
+                .HasOne(oi => oi.Order)
+                .WithMany(o => o.OrderItems)
+                .HasForeignKey(oi => oi.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<OrderItem>()
+                .HasOne(oi => oi.Booking)
+                .WithMany()
+                .HasForeignKey(oi => oi.BookingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Booking relationships
+            builder.Entity<Booking>()
+                .HasOne(b => b.User)
+                .WithMany()
+                .HasForeignKey(b => b.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AccommodationBookingDetail>()
+                .HasOne(abd => abd.Booking)
+                .WithMany(b => b.AccommodationBookingDetails)
+                .HasForeignKey(abd => abd.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<TransportBookingDetail>()
+                .HasOne(tbd => tbd.Booking)
+                .WithMany(b => b.TransportBookingDetails)
+                .HasForeignKey(tbd => tbd.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<EntertainmentBookingDetail>()
+                .HasOne(ebd => ebd.Booking)
+                .WithMany(b => b.EntertainmentBookingDetails)
+                .HasForeignKey(ebd => ebd.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Payment relationships
+            builder.Entity<Payment>()
+                .HasOne(p => p.User)
+                .WithMany()
+                .HasForeignKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Payment>()
+                .HasOne(p => p.Order)
+                .WithMany(o => o.Payments)
+                .HasForeignKey(p => p.OrderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Payment>()
+                .HasOne(p => p.Booking)
+                .WithMany(b => b.Payments)
+                .HasForeignKey(p => p.BookingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ExtraService relationship
+            builder.Entity<ExtraService>()
+                .HasOne(es => es.Booking)
+                .WithMany(b => b.ExtraServices)
+                .HasForeignKey(es => es.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Feedback relationship
+            builder.Entity<Feedback>()
+                .HasOne(f => f.Booking)
+                .WithMany(b => b.Feedbacks)
+                .HasForeignKey(f => f.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Comment relationship
+            builder.Entity<Comment>()
+                .HasOne(c => c.Booking)
+                .WithMany(b => b.Comments)
+                .HasForeignKey(c => c.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Hotel & Room relationships
+            builder.Entity<Room>()
+                .HasOne(r => r.Hotel)
+                .WithMany(h => h.Rooms)
+                .HasForeignKey(r => r.HotelId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Transport & TransportTrip relationships
+            builder.Entity<TransportTrip>()
+                .HasOne(tt => tt.Transport)
+                .WithMany(t => t.TransportTrips)
+                .HasForeignKey(tt => tt.TransportId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Booking detail relationships with master data
+            builder.Entity<AccommodationBookingDetail>()
+                .HasOne(abd => abd.Room)
+                .WithMany()
+                .HasForeignKey(abd => abd.RoomId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<TransportBookingDetail>()
+                .HasOne(tbd => tbd.TransportTrip)
+                .WithMany()
+                .HasForeignKey(tbd => tbd.TripId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<EntertainmentBookingDetail>()
+                .HasOne(ebd => ebd.Show)
+                .WithMany()
+                .HasForeignKey(ebd => ebd.ShowId)
+                .OnDelete(DeleteBehavior.Restrict);
 
         }
         public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
@@ -36,11 +247,17 @@ namespace Trippio.Data
             foreach (var entityEntry in entries)
             {
                 var dateCreatedProp = entityEntry.Entity.GetType().GetProperty("DateCreated");
+                var createdAtProp = entityEntry.Entity.GetType().GetProperty("CreatedAt");
+
                 if (entityEntry.State == EntityState.Added)
                 {
                     if (dateCreatedProp != null)
                     {
                         dateCreatedProp.SetValue(entityEntry.Entity, DateTime.UtcNow);
+                    }
+                    if (createdAtProp != null)
+                    {
+                        createdAtProp.SetValue(entityEntry.Entity, DateTime.UtcNow);
                     }
                 }
 
@@ -49,7 +266,7 @@ namespace Trippio.Data
                 {
                     if (modifiedDateProp != null)
                     {
-                        modifiedDateProp.SetValue(entityEntry.Entity, DateTime.Now);
+                        modifiedDateProp.SetValue(entityEntry.Entity, DateTime.UtcNow);
                     }
                 }
             }

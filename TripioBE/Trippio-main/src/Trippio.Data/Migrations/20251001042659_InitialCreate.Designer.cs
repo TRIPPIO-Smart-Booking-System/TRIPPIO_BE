@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Trippio.Data;
 
@@ -11,9 +12,11 @@ using Trippio.Data;
 namespace Trippio.Data.Migrations
 {
     [DbContext(typeof(TrippioDbContext))]
-    partial class TrippioDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251001042659_InitialCreate")]
+    partial class InitialCreate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -189,6 +192,26 @@ namespace Trippio.Data.Migrations
                     b.HasIndex("CustomerId");
 
                     b.ToTable("Addresses");
+                });
+
+            modelBuilder.Entity("Trippio.Core.Domain.Entities.Basket", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BasketData")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("Baskets");
                 });
 
             modelBuilder.Entity("Trippio.Core.Domain.Entities.Booking", b =>
@@ -1084,6 +1107,17 @@ namespace Trippio.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("Trippio.Core.Domain.Entities.Basket", b =>
+                {
+                    b.HasOne("Trippio.Core.Domain.Identity.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Trippio.Core.Domain.Entities.Booking", b =>

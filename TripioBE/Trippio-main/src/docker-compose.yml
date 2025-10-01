@@ -43,7 +43,7 @@ services:
     environment:
       - DOTNET_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:7142
-      - ConnectionStrings__DefaultConnection=Server=trippio-sqlserver,1433;Database=TrippioDB;User Id=sa;Password=Strong!Pass123;TrustServerCertificate=True;Encrypt=True;
+      - ConnectionStrings__DefaultConnection=Server=trippio-sqlserver,1433;Database=TrippioDb;User Id=sa;Password=Strong!Pass123;TrustServerCertificate=True;Encrypt=True;
     ports:
       - "7142:7142"
     depends_on:

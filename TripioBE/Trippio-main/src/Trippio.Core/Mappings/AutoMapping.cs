@@ -1,6 +1,10 @@
 ﻿using AutoMapper;
+using Trippio.Core.Domain.Entities;
 using Trippio.Core.Domain.Identity;
 using Trippio.Core.Models.Auth;
+using Trippio.Core.Models.Booking;
+using Trippio.Core.Models.Order;
+using Trippio.Core.Models.Payment;
 using Trippio.Core.Models.System;
 
 namespace Trippio.Core.Mappings
@@ -24,7 +28,6 @@ namespace Trippio.Core.Mappings
                 .ForMember(dest => dest.DateCreated, opt => opt.MapFrom(src => src.DateCreated))
                 .ForMember(dest => dest.Dob, opt => opt.MapFrom(src => src.Dob))
                 .ForMember(dest => dest.IsEmailVerified, opt => opt.MapFrom(src => src.IsEmailVerified))
-                .ForMember(dest => dest.IsPhoneVerified, opt => opt.MapFrom(src => src.IsPhoneVerified))
                 .ForMember(dest => dest.IsFirstLogin, opt => opt.MapFrom(src => src.IsFirstLogin))
                 .ForMember(dest => dest.Roles, opt => opt.Ignore()); // Roles sẽ được set riêng
 
@@ -38,15 +41,47 @@ namespace Trippio.Core.Mappings
                 .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.LastName))
                 .ForMember(dest => dest.Dob, opt => opt.MapFrom(src => src.DateOfBirth))
                 .ForMember(dest => dest.DateCreated, opt => opt.MapFrom(src => DateTime.UtcNow))
-                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => false))
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => false)) // ✅ Inactive until email verified
                 .ForMember(dest => dest.IsFirstLogin, opt => opt.MapFrom(src => true))
                 .ForMember(dest => dest.IsEmailVerified, opt => opt.MapFrom(src => false))
-                .ForMember(dest => dest.IsPhoneVerified, opt => opt.MapFrom(src => false))
                 .ForMember(dest => dest.Balance, opt => opt.MapFrom(src => 0))
                 .ForMember(dest => dest.LoyaltyAmountPerPost, opt => opt.MapFrom(src => 1000));
 
             CreateMap<CreateUserRequest, AppUser>();
             CreateMap<UpdateUserRequest, AppUser>();
+
+            // Booking mappings
+            CreateMap<Booking, BookingDto>();
+
+            // ExtraService mappings
+            CreateMap<ExtraService, ExtraServiceDto>();
+            CreateMap<CreateExtraServiceDto, ExtraService>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid()))
+                .ForMember(dest => dest.DateCreated, opt => opt.MapFrom(src => DateTime.UtcNow));
+            CreateMap<UpdateExtraServiceDto, ExtraService>()
+                .ForMember(dest => dest.ModifiedDate, opt => opt.MapFrom(src => DateTime.UtcNow));
+
+            // Feedback mappings
+            CreateMap<Feedback, FeedbackDto>();
+            CreateMap<CreateFeedbackDto, Feedback>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid()))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow));
+            CreateMap<UpdateFeedbackDto, Feedback>();
+
+            // Comment mappings
+            CreateMap<Comment, CommentDto>();
+            CreateMap<CreateCommentDto, Comment>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid()))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow));
+            CreateMap<UpdateCommentDto, Comment>();
+
+            // Order mappings
+            CreateMap<Order, OrderDto>();
+            CreateMap<OrderItem, OrderItemDto>()
+                .ForMember(dest => dest.BookingName, opt => opt.MapFrom(src => src.Booking.BookingType));
+
+            // Payment mappings
+            CreateMap<Payment, PaymentDto>();
         }
     }
 }

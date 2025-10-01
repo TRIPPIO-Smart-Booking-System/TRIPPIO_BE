@@ -104,20 +104,18 @@ internal class Program
             builder.Services.AddScoped(typeof(IRepository<,>), typeof(RepositoryBase<,>));
             builder.Services.AddScoped<DataSeeder>();
 
-            //var services = typeof(PostRepository).Assembly.GetTypes()
-            //    .Where(x => x.GetInterfaces()
-            //        .Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRepository<,>))
-            //        && !x.IsAbstract && x.IsClass && x != typeof(RepositoryBase<,>));
+            // Register Repositories
+            builder.Services.AddScoped<Trippio.Core.Repositories.IBookingRepository, Trippio.Data.Repositories.BookingRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.IPaymentRepository, Trippio.Data.Repositories.PaymentRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.IExtraServiceRepository, Trippio.Data.Repositories.ExtraServiceRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.IFeedbackRepository, Trippio.Data.Repositories.FeedbackRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.ICommentRepository, Trippio.Data.Repositories.CommentRepository>();
 
-            //foreach (var service in services)
-            //{
-            //    var allInterfaces = service.GetInterfaces();
-            //    var directInterface = allInterfaces.Except(allInterfaces.SelectMany(t => t.GetInterfaces())).FirstOrDefault();
-            //    if (directInterface != null)
-            //    {
-            //        builder.Services.Add(new ServiceDescriptor(directInterface, service, ServiceLifetime.Scoped));
-            //    }
-            //}
+            // Register Services
+            //builder.Services.AddScoped<Trippio.Core.Services.IOrderService, Trippio.Data.Services.OrderService>();
+            //builder.Services.AddScoped<Trippio.Core.Services.IBookingService, Trippio.Data.Services.BookingService>();
+            //builder.Services.AddScoped<Trippio.Core.Services.IPaymentService, Trippio.Data.Services.PaymentService>();
+            //builder.Services.AddScoped<Trippio.Core.Services.IBasketService, Trippio.Data.Services.BasketService>();
 
             builder.Services.AddAutoMapper(typeof(Trippio.Core.Mappings.AutoMapping));
 
@@ -128,10 +126,8 @@ internal class Program
             // Register Email Service
             builder.Services.AddScoped<Trippio.Core.Services.IEmailService, Trippio.Data.Service.EmailService>();
 
-            // Register SMS Service
-            //builder.Services.Configure<TwilioSettings>(builder.Configuration.GetSection("Twilio"));
-            //builder.Services.AddScoped<ISmsService, SmsService>();
-            //// Add Health Checks
+            // Add Health Checks
+
             builder.Services.AddHealthChecks()
                 .AddSqlServer(connectionString, name: "sql-server")
                 .AddCheck("self", () => HealthCheckResult.Healthy("API is running"));
