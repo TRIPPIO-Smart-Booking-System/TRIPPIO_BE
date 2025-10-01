@@ -414,7 +414,7 @@ namespace Trippio.Data
         {
             // Get sample users
             var customers = await context.Users
-                .Where(u => context.UserRoles.Any(ur => ur.UserId == u.Id && 
+                .Where(u => context.UserRoles.Any(ur => ur.UserId == u.Id &&
                     context.Roles.Any(r => r.Id == ur.RoleId && r.NormalizedName == "CUSTOMER")))
                 .Take(3)
                 .ToListAsync();

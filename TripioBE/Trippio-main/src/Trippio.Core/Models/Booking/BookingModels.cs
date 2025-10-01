@@ -94,7 +94,7 @@ namespace Trippio.Core.Models.Booking
         public decimal TotalAmount { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTime DateCreated { get; set; }
-        
+
         // New navigation properties
         public List<ExtraServiceDto> ExtraServices { get; set; } = new();
         public List<FeedbackDto> Feedbacks { get; set; } = new();

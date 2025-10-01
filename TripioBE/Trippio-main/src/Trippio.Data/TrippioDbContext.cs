@@ -48,7 +48,6 @@ namespace Trippio.Data
         // Payment & Others
         public DbSet<Payment> Payments { get; set; }
         public DbSet<ScheduledJob> ScheduledJobs { get; set; }
-        public DbSet<Basket> Baskets { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -184,13 +183,6 @@ namespace Trippio.Data
                 .HasForeignKey(p => p.BookingId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Basket relationship
-            builder.Entity<Basket>()
-                .HasOne(b => b.User)
-                .WithMany()
-                .HasForeignKey(b => b.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-
             // ExtraService relationship
             builder.Entity<ExtraService>()
                 .HasOne(es => es.Booking)
@@ -256,7 +248,7 @@ namespace Trippio.Data
             {
                 var dateCreatedProp = entityEntry.Entity.GetType().GetProperty("DateCreated");
                 var createdAtProp = entityEntry.Entity.GetType().GetProperty("CreatedAt");
-                
+
                 if (entityEntry.State == EntityState.Added)
                 {
                     if (dateCreatedProp != null)

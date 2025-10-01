@@ -2,7 +2,6 @@
 using Trippio.Core.Domain.Entities;
 using Trippio.Core.Domain.Identity;
 using Trippio.Core.Models.Auth;
-using Trippio.Core.Models.Basket;
 using Trippio.Core.Models.Booking;
 using Trippio.Core.Models.Order;
 using Trippio.Core.Models.Payment;
@@ -83,9 +82,6 @@ namespace Trippio.Core.Mappings
 
             // Payment mappings
             CreateMap<Payment, PaymentDto>();
-
-            // Basket mappings
-            CreateMap<Basket, BasketDto>();
         }
     }
 }
