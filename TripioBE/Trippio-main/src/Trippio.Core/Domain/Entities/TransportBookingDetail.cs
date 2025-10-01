@@ -13,19 +13,11 @@ namespace Trippio.Core.Domain.Entities
         public Guid BookingId { get; set; }
 
         [Required]
-        public Guid TicketId { get; set; }
-
-        [Required]
-        public DateTime DepartureTime { get; set; }
-
-        [Required]
-        public DateTime ArrivalTime { get; set; }
+        public Guid TripId { get; set; }
 
         [Required]
         [MaxLength(50)]
         public required string SeatNumber { get; set; }
-
-        public int AvailableSeats { get; set; }
 
         public DateTime DateCreated { get; set; }
         public DateTime? ModifiedDate { get; set; }
@@ -33,5 +25,8 @@ namespace Trippio.Core.Domain.Entities
         // Navigation Properties
         [ForeignKey("BookingId")]
         public virtual Booking Booking { get; set; } = null!;
+
+        [ForeignKey("TripId")]
+        public virtual TransportTrip TransportTrip { get; set; } = null!;
     }
 }

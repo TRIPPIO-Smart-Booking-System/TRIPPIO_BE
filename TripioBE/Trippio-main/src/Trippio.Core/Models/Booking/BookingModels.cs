@@ -42,6 +42,8 @@ namespace Trippio.Core.Models.Booking
 
         [Required]
         public int GuestCount { get; set; }
+
+        public int AvailableRooms { get; set; }
     }
 
     public class CreateTransportBookingRequest
@@ -61,6 +63,8 @@ namespace Trippio.Core.Models.Booking
         [Required]
         [MaxLength(50)]
         public required string SeatNumber { get; set; }
+
+        public int AvailableSeats { get; set; }
     }
 
     public class CreateEntertainmentBookingRequest
@@ -77,6 +81,8 @@ namespace Trippio.Core.Models.Booking
         [Required]
         [MaxLength(50)]
         public required string SeatNumber { get; set; }
+
+        public int AvailableTickets { get; set; }
     }
 
     public class BookingDto
@@ -88,5 +94,109 @@ namespace Trippio.Core.Models.Booking
         public decimal TotalAmount { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTime DateCreated { get; set; }
+        
+        // New navigation properties
+        public List<ExtraServiceDto> ExtraServices { get; set; } = new();
+        public List<FeedbackDto> Feedbacks { get; set; } = new();
+        public List<CommentDto> Comments { get; set; } = new();
+    }
+
+    public class ExtraServiceDto
+    {
+        public Guid Id { get; set; }
+        public Guid BookingId { get; set; }
+        public required string Name { get; set; }
+        public decimal Price { get; set; }
+        public int Quantity { get; set; }
+        public DateTime DateCreated { get; set; }
+        public DateTime? ModifiedDate { get; set; }
+    }
+
+    public class CreateExtraServiceDto
+    {
+        [Required]
+        public Guid BookingId { get; set; }
+
+        [Required]
+        [MaxLength(200)]
+        public required string Name { get; set; }
+
+        [Required]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
+        public decimal Price { get; set; }
+
+        [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1")]
+        public int Quantity { get; set; } = 1;
+    }
+
+    public class UpdateExtraServiceDto
+    {
+        [Required]
+        [MaxLength(200)]
+        public required string Name { get; set; }
+
+        [Required]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
+        public decimal Price { get; set; }
+
+        [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1")]
+        public int Quantity { get; set; } = 1;
+    }
+
+    public class FeedbackDto
+    {
+        public Guid Id { get; set; }
+        public Guid BookingId { get; set; }
+        public int Rating { get; set; }
+        public string? Comment { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class CreateFeedbackDto
+    {
+        [Required]
+        public Guid BookingId { get; set; }
+
+        [Required]
+        [Range(1, 5, ErrorMessage = "Rating must be between 1 and 5")]
+        public int Rating { get; set; }
+
+        [MaxLength(1000)]
+        public string? Comment { get; set; }
+    }
+
+    public class UpdateFeedbackDto
+    {
+        [Required]
+        [Range(1, 5, ErrorMessage = "Rating must be between 1 and 5")]
+        public int Rating { get; set; }
+
+        [MaxLength(1000)]
+        public string? Comment { get; set; }
+    }
+
+    public class CommentDto
+    {
+        public Guid Id { get; set; }
+        public Guid BookingId { get; set; }
+        public required string Content { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class CreateCommentDto
+    {
+        [Required]
+        public Guid BookingId { get; set; }
+
+        [Required]
+        [MaxLength(2000)]
+        public required string Content { get; set; }
+    }
+
+    public class UpdateCommentDto
+    {
+        [Required]
+        [MaxLength(2000)]
+        public required string Content { get; set; }
     }
 }

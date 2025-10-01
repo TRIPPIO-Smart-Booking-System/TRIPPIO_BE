@@ -105,16 +105,14 @@ internal class Program
             builder.Services.AddScoped<DataSeeder>();
 
             // Register Repositories
-            builder.Services.AddScoped<Trippio.Core.Repositories.IProductRepository, Trippio.Data.Repositories.ProductRepository>();
-            builder.Services.AddScoped<Trippio.Core.Repositories.IOrderRepository, Trippio.Data.Repositories.OrderRepository>();
             builder.Services.AddScoped<Trippio.Core.Repositories.IBookingRepository, Trippio.Data.Repositories.BookingRepository>();
             builder.Services.AddScoped<Trippio.Core.Repositories.IPaymentRepository, Trippio.Data.Repositories.PaymentRepository>();
             builder.Services.AddScoped<Trippio.Core.Repositories.IBasketRepository, Trippio.Data.Repositories.BasketRepository>();
-            builder.Services.AddScoped<Trippio.Core.Repositories.ICategoryRepository, Trippio.Data.Repositories.CategoryRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.IExtraServiceRepository, Trippio.Data.Repositories.ExtraServiceRepository>();
             builder.Services.AddScoped<Trippio.Core.Repositories.IFeedbackRepository, Trippio.Data.Repositories.FeedbackRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.ICommentRepository, Trippio.Data.Repositories.CommentRepository>();
 
             // Register Services
-            builder.Services.AddScoped<Trippio.Core.Services.IProductService, Trippio.Data.Services.ProductService>();
             //builder.Services.AddScoped<Trippio.Core.Services.IOrderService, Trippio.Data.Services.OrderService>();
             //builder.Services.AddScoped<Trippio.Core.Services.IBookingService, Trippio.Data.Services.BookingService>();
             //builder.Services.AddScoped<Trippio.Core.Services.IPaymentService, Trippio.Data.Services.PaymentService>();

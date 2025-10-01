@@ -21,6 +21,17 @@ namespace Trippio.Data
         public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<Notification> Notifications { get; set; }
 
+        // Master Data - Accommodation
+        public DbSet<Hotel> Hotels { get; set; }
+        public DbSet<Room> Rooms { get; set; }
+
+        // Master Data - Transport
+        public DbSet<Transport> Transports { get; set; }
+        public DbSet<TransportTrip> TransportTrips { get; set; }
+
+        // Master Data - Entertainment
+        public DbSet<Show> Shows { get; set; }
+
         // Order
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
@@ -200,6 +211,39 @@ namespace Trippio.Data
                 .WithMany(b => b.Comments)
                 .HasForeignKey(c => c.BookingId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Hotel & Room relationships
+            builder.Entity<Room>()
+                .HasOne(r => r.Hotel)
+                .WithMany(h => h.Rooms)
+                .HasForeignKey(r => r.HotelId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Transport & TransportTrip relationships
+            builder.Entity<TransportTrip>()
+                .HasOne(tt => tt.Transport)
+                .WithMany(t => t.TransportTrips)
+                .HasForeignKey(tt => tt.TransportId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Booking detail relationships with master data
+            builder.Entity<AccommodationBookingDetail>()
+                .HasOne(abd => abd.Room)
+                .WithMany()
+                .HasForeignKey(abd => abd.RoomId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<TransportBookingDetail>()
+                .HasOne(tbd => tbd.TransportTrip)
+                .WithMany()
+                .HasForeignKey(tbd => tbd.TripId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<EntertainmentBookingDetail>()
+                .HasOne(ebd => ebd.Show)
+                .WithMany()
+                .HasForeignKey(ebd => ebd.ShowId)
+                .OnDelete(DeleteBehavior.Restrict);
 
         }
         public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)

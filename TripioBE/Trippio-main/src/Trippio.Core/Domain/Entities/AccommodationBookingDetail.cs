@@ -13,7 +13,7 @@ namespace Trippio.Core.Domain.Entities
         public Guid BookingId { get; set; }
 
         [Required]
-        public Guid HotelId { get; set; }
+        public Guid RoomId { get; set; }
 
         [Required]
         public DateTime CheckInDate { get; set; }
@@ -22,13 +22,7 @@ namespace Trippio.Core.Domain.Entities
         public DateTime CheckOutDate { get; set; }
 
         [Required]
-        [MaxLength(100)]
-        public required string RoomType { get; set; }
-
-        [Required]
         public int GuestCount { get; set; }
-
-        public int AvailableRooms { get; set; }
 
         public DateTime DateCreated { get; set; }
         public DateTime? ModifiedDate { get; set; }
@@ -36,5 +30,8 @@ namespace Trippio.Core.Domain.Entities
         // Navigation Properties
         [ForeignKey("BookingId")]
         public virtual Booking Booking { get; set; } = null!;
+
+        [ForeignKey("RoomId")]
+        public virtual Room Room { get; set; } = null!;
     }
 }

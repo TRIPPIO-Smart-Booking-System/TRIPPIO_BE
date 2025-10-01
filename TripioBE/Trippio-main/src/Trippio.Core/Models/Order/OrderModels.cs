@@ -14,7 +14,7 @@ namespace Trippio.Core.Models.Order
     public class CreateOrderItemRequest
     {
         [Required]
-        public int ProductId { get; set; }
+        public Guid BookingId { get; set; }
 
         [Required]
         public int Quantity { get; set; }
@@ -36,8 +36,8 @@ namespace Trippio.Core.Models.Order
     {
         public int Id { get; set; }
         public int OrderId { get; set; }
-        public int ProductId { get; set; }
-        public string ProductName { get; set; } = string.Empty;
+        public Guid BookingId { get; set; }
+        public string BookingName { get; set; } = string.Empty;
         public int Quantity { get; set; }
         public decimal Price { get; set; }
     }

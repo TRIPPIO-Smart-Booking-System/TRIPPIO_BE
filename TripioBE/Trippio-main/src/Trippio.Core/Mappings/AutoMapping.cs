@@ -4,10 +4,8 @@ using Trippio.Core.Domain.Identity;
 using Trippio.Core.Models.Auth;
 using Trippio.Core.Models.Basket;
 using Trippio.Core.Models.Booking;
-using Trippio.Core.Models.Content;
 using Trippio.Core.Models.Order;
 using Trippio.Core.Models.Payment;
-using Trippio.Core.Models.Product;
 using Trippio.Core.Models.System;
 
 namespace Trippio.Core.Mappings
@@ -53,27 +51,35 @@ namespace Trippio.Core.Mappings
             CreateMap<CreateUserRequest, AppUser>();
             CreateMap<UpdateUserRequest, AppUser>();
 
-            // Product mappings
-            CreateMap<Product, Models.Content.ProductDto>()
-                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category.Name))
-                .ForMember(dest => dest.InventoryQuantity, opt => opt.MapFrom(src => src.ProductInventory != null ? src.ProductInventory.Stock : 0));
+            // Booking mappings
+            CreateMap<Booking, BookingDto>();
 
-            CreateMap<Models.Content.CreateProductDto, Product>()
+            // ExtraService mappings
+            CreateMap<ExtraService, ExtraServiceDto>();
+            CreateMap<CreateExtraServiceDto, ExtraService>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid()))
                 .ForMember(dest => dest.DateCreated, opt => opt.MapFrom(src => DateTime.UtcNow));
-
-            CreateMap<Models.Content.UpdateProductDto, Product>()
+            CreateMap<UpdateExtraServiceDto, ExtraService>()
                 .ForMember(dest => dest.ModifiedDate, opt => opt.MapFrom(src => DateTime.UtcNow));
 
-            // Category mappings  
-            CreateMap<Category, CategoryDto>();
+            // Feedback mappings
+            CreateMap<Feedback, FeedbackDto>();
+            CreateMap<CreateFeedbackDto, Feedback>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid()))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow));
+            CreateMap<UpdateFeedbackDto, Feedback>();
+
+            // Comment mappings
+            CreateMap<Comment, CommentDto>();
+            CreateMap<CreateCommentDto, Comment>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid()))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow));
+            CreateMap<UpdateCommentDto, Comment>();
 
             // Order mappings
             CreateMap<Order, OrderDto>();
             CreateMap<OrderItem, OrderItemDto>()
-                .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product.Name));
-
-            // Booking mappings
-            CreateMap<Booking, BookingDto>();
+                .ForMember(dest => dest.BookingName, opt => opt.MapFrom(src => src.Booking.BookingType));
 
             // Payment mappings
             CreateMap<Payment, PaymentDto>();
