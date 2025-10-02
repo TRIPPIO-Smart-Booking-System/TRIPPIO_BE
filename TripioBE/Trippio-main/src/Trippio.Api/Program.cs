@@ -25,7 +25,7 @@ using Trippio.Data.Service;
 
 internal class Program
 {
-    private static void Main(string[] args)
+    private static async Task Main(string[] args)
     {
         Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(new ConfigurationBuilder()
@@ -102,7 +102,6 @@ internal class Program
 
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             builder.Services.AddScoped(typeof(IRepository<,>), typeof(RepositoryBase<,>));
-            builder.Services.AddScoped<DataSeeder>();
 
             // Register Repositories
             builder.Services.AddScoped<Trippio.Core.Repositories.IBookingRepository, Trippio.Data.Repositories.BookingRepository>();
@@ -233,7 +232,7 @@ internal class Program
             app.UseAuthorization();
             app.MapControllers();
 
-            app.MigrateDatabase();
+            await app.MigrateDatabaseAsync();
             app.Run();
         }
         catch (Exception ex)

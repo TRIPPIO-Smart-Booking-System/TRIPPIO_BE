@@ -14,11 +14,11 @@ services:
       - trippio_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "sleep 5"]
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P Strong!Pass123 -Q 'SELECT 1' || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 60s
+      retries: 10
+      start_period: 40s
 
   # Infrastructure section
   portainer:
@@ -43,7 +43,7 @@ services:
     environment:
       - DOTNET_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:7142
-      - ConnectionStrings__DefaultConnection=Server=trippio-sqlserver,1433;Database=TrippioDb;User Id=sa;Password=Strong!Pass123;TrustServerCertificate=True;Encrypt=True;
+      - ConnectionStrings__DefaultConnection=Server=trippio-sqlserver,1433;Database=TrippioDb;User Id=sa;Password=Strong!Pass123;Encrypt=False;TrustServerCertificate=True;MultipleActiveResultSets=true;
     ports:
       - "7142:7142"
     depends_on:
