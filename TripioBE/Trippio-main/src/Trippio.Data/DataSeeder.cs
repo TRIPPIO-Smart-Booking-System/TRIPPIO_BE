@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Trippio.Core.Domain.Identity;
 using Trippio.Core.Domain.Entities;
 
@@ -7,6 +8,15 @@ namespace Trippio.Data
 {
     public class DataSeeder
     {
+        private readonly UserManager<AppUser> _userManager;
+        private readonly RoleManager<AppRole> _roleManager;
+
+        public DataSeeder(UserManager<AppUser> userManager, RoleManager<AppRole> roleManager)
+        {
+            _userManager = userManager;
+            _roleManager = roleManager;
+        }
+
         public async Task SeedAsync(TrippioDbContext context)
         {
             await SeedRolesAndUsers(context);
@@ -18,60 +28,46 @@ namespace Trippio.Data
 
         private async Task SeedRolesAndUsers(TrippioDbContext context)
         {
-            var passwordHasher = new PasswordHasher<AppUser>();
-
-            // Seed roles
-            var adminRole = await context.Roles.FirstOrDefaultAsync(r => r.NormalizedName == "ADMIN");
+            // Seed roles using RoleManager
+            var adminRole = await _roleManager.FindByNameAsync("admin");
             if (adminRole == null)
             {
                 adminRole = new AppRole
                 {
                     Id = Guid.Parse("39D2FA36-117C-4552-AC04-7A90993075FF"),
                     Name = "admin",
-                    NormalizedName = "ADMIN",
-                    DisplayName = "Quản trị viên",
-                    ConcurrencyStamp = Guid.NewGuid().ToString()
+                    DisplayName = "Quản trị viên"
                 };
-                await context.Roles.AddAsync(adminRole);
+                await _roleManager.CreateAsync(adminRole);
             }
 
-            var customerRole = await context.Roles.FirstOrDefaultAsync(r => r.NormalizedName == "CUSTOMER");
+            var customerRole = await _roleManager.FindByNameAsync("customer");
             if (customerRole == null)
             {
                 customerRole = new AppRole
                 {
                     Id = Guid.NewGuid(),
                     Name = "customer",
-                    NormalizedName = "CUSTOMER",
-                    DisplayName = "Khách hàng",
-                    ConcurrencyStamp = Guid.NewGuid().ToString()
+                    DisplayName = "Khách hàng"
                 };
-                await context.Roles.AddAsync(customerRole);
+                await _roleManager.CreateAsync(customerRole);
             }
 
-            await context.SaveChangesAsync();
-
-            // Helper method to create user
-            async Task<AppUser> CreateUserIfNotExists(string userName, string email, string phone, string firstName, string lastName, Guid roleId, bool isAdmin = false)
+            // Helper method to create user using UserManager
+            async Task<AppUser> CreateUserIfNotExists(string userName, string email, string phone, string firstName, string lastName, string roleName, bool isAdmin = false)
             {
-                var normalizedUserName = userName.ToUpper();
-                var user = await context.Users.FirstOrDefaultAsync(u => u.NormalizedUserName == normalizedUserName);
+                var user = await _userManager.FindByNameAsync(userName);
                 if (user != null) return user;
 
-                var userId = Guid.NewGuid();
                 user = new AppUser
                 {
-                    Id = userId,
+                    Id = Guid.NewGuid(),
                     FirstName = firstName,
                     LastName = lastName,
                     Email = email,
-                    NormalizedEmail = email.ToUpper(),
                     UserName = userName,
-                    NormalizedUserName = normalizedUserName,
                     PhoneNumber = phone,
                     IsActive = true,
-                    SecurityStamp = Guid.NewGuid().ToString(),
-                    LockoutEnabled = false,
                     DateCreated = DateTime.UtcNow,
                     Dob = new DateTime(1990, 1, 1),
                     IsEmailVerified = true,
@@ -79,34 +75,27 @@ namespace Trippio.Data
                     Balance = isAdmin ? 10000 : 50000,
                     LoyaltyAmountPerPost = 1000
                 };
-                user.PasswordHash = passwordHasher.HashPassword(user, isAdmin ? "Admin@123$" : "Customer@123$");
-                await context.Users.AddAsync(user);
-                await context.SaveChangesAsync();
 
-                // Assign role
-                var userRole = await context.UserRoles.FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
-                if (userRole == null)
+                var password = isAdmin ? "Admin@123$" : "Customer@123$";
+                var result = await _userManager.CreateAsync(user, password);
+                
+                if (result.Succeeded)
                 {
-                    await context.UserRoles.AddAsync(new IdentityUserRole<Guid>
-                    {
-                        UserId = userId,
-                        RoleId = roleId
-                    });
-                    await context.SaveChangesAsync();
+                    await _userManager.AddToRoleAsync(user, roleName);
                 }
 
                 return user;
             }
 
             // Create admin users
-            await CreateUserIfNotExists("VietAdmin", "vietbmt19@gmail.com", "0977452762", "Việt", "Admin", adminRole.Id, true);
-            await CreateUserIfNotExists("LinhLonton", "linhbinhtinh12344@gmail.com", "0382574698", "Linh", "Admin", adminRole.Id, true);
-            await CreateUserIfNotExists("DuyAnhBulon", "tranhoduyanh03@gmail.com", "091234567", "Duy Anh", "Admin", adminRole.Id, true);
+            await CreateUserIfNotExists("VietAdmin", "vietbmt19@gmail.com", "0977452762", "Việt", "Admin", "admin", true);
+            await CreateUserIfNotExists("LinhLonton", "linhbinhtinh12344@gmail.com", "0382574698", "Linh", "Admin", "admin", true);
+            await CreateUserIfNotExists("DuyAnhBulon", "tranhoduyanh03@gmail.com", "091234567", "Duy Anh", "Admin", "admin", true);
 
             // Create customer users
-            await CreateUserIfNotExists("customer1", "customer1@gmail.com", "0901234567", "Nguyễn", "Văn A", customerRole.Id);
-            await CreateUserIfNotExists("customer2", "customer2@gmail.com", "0902345678", "Trần", "Thị B", customerRole.Id);
-            await CreateUserIfNotExists("customer3", "customer3@gmail.com", "0903456789", "Lê", "Văn C", customerRole.Id);
+            await CreateUserIfNotExists("customer1", "customer1@gmail.com", "0901234567", "Nguyễn", "Văn A", "customer");
+            await CreateUserIfNotExists("customer2", "customer2@gmail.com", "0902345678", "Trần", "Thị B", "customer");
+            await CreateUserIfNotExists("customer3", "customer3@gmail.com", "0903456789", "Lê", "Văn C", "customer");
         }
 
         private async Task SeedHotelsAndRooms(TrippioDbContext context)

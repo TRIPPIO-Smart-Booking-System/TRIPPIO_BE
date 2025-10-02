@@ -37,7 +37,7 @@ services:
       - DOTNET_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:7142
       # ✅ CHỈNH connection string: bỏ Encrypt=True, giữ TrustServerCertificate
-      - ConnectionStrings__DefaultConnection=Server=trippio-sqlserver,1433;Database=TrippioDb;User Id=sa;Password=Strong!Pass123;Encrypt=False;TrustServerCertificate=True;
+      - ConnectionStrings__DefaultConnection=Server=trippio-sqlserver,1433;Database=TrippioDb;User Id=sa;Password=Strong!Pass123;Encrypt=False;TrustServerCertificate=True;MultipleActiveResultSets=true;
     ports:
       - "7142:7142"
     networks:

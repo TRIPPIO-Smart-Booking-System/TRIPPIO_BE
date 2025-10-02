@@ -28,6 +28,11 @@ bld/
 msbuild.log
 msbuild.err
 msbuild.wrn
-
+**/Migrations/
+**/*/Migrations/
 # Visual Studio 2015
 .vs/
+
+
+**/appsettings.json
+!**/appsettings.Development.json
