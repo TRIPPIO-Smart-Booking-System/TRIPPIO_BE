@@ -26,7 +26,6 @@ using Trippio.Data;
 using Trippio.Data.Repositories;
 using Trippio.Data.SeedWorks;
 using Trippio.Data.Service;
-using Trippio.Api.Idempotency;
 internal class Program
 {
     private static async Task Main(string[] args)
@@ -113,6 +112,13 @@ internal class Program
             builder.Services.AddScoped<Trippio.Core.Repositories.IExtraServiceRepository, Trippio.Data.Repositories.ExtraServiceRepository>();
             builder.Services.AddScoped<Trippio.Core.Repositories.IFeedbackRepository, Trippio.Data.Repositories.FeedbackRepository>();
             builder.Services.AddScoped<Trippio.Core.Repositories.ICommentRepository, Trippio.Data.Repositories.CommentRepository>();
+            
+            // Register Master Data Repositories
+            builder.Services.AddScoped<Trippio.Core.Repositories.IHotelRepository, Trippio.Data.Repositories.HotelRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.IRoomRepository, Trippio.Data.Repositories.RoomRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.ITransportRepository, Trippio.Data.Repositories.TransportRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.ITransportTripRepository, Trippio.Data.Repositories.TransportTripRepository>();
+            builder.Services.AddScoped<Trippio.Core.Repositories.IShowRepository, Trippio.Data.Repositories.ShowRepository>();
 
             // Register Services
             //builder.Services.AddScoped<Trippio.Core.Services.IOrderService, Trippio.Data.Services.OrderService>();
@@ -135,6 +141,13 @@ internal class Program
             builder.Services.AddScoped<IBookingService, Trippio.Data.Service.BookingService>();
             //Payment
             builder.Services.AddScoped<IPaymentService, Trippio.Data.Service.PaymentService>();
+            
+            // Register Master Data Services
+            builder.Services.AddScoped<Trippio.Core.Services.IHotelService, Trippio.Data.Services.HotelService>();
+            builder.Services.AddScoped<Trippio.Core.Services.IRoomService, Trippio.Data.Services.RoomService>();
+            builder.Services.AddScoped<Trippio.Core.Services.ITransportService, Trippio.Data.Services.TransportService>();
+            builder.Services.AddScoped<Trippio.Core.Services.ITransportTripService, Trippio.Data.Services.TransportTripService>();
+            builder.Services.AddScoped<Trippio.Core.Services.IShowService, Trippio.Data.Services.ShowService>();
             //paymentwebhook
             builder.Services.AddScoped<IIdempotencyStore, RedisIdempotencyStore>();
             //Redis
