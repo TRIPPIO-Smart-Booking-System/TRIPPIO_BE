@@ -26,6 +26,9 @@ namespace Trippio.Core.Domain.Entities
         public required string PaymentMethod { get; set; }
 
         [Required]
+        public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
+
+        [Required]
         public DateTime PaidAt { get; set; }
 
         public DateTime DateCreated { get; set; }

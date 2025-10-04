@@ -30,6 +30,7 @@ namespace Trippio.Core.Models.Order
         public DateTime OrderDate { get; set; }
         public decimal TotalAmount { get; set; }
         public List<OrderItemDto> OrderItems { get; set; } = new();
+        public string Status { get; set; } = string.Empty;
     }
 
     public class OrderItemDto
