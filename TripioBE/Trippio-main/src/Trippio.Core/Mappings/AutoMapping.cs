@@ -76,7 +76,8 @@ namespace Trippio.Core.Mappings
             CreateMap<UpdateCommentDto, Comment>();
 
             // Order mappings
-            CreateMap<Order, OrderDto>();
+            CreateMap<Order, OrderDto>()
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()));
             CreateMap<OrderItem, OrderItemDto>()
                 .ForMember(dest => dest.BookingName, opt => opt.MapFrom(src => src.Booking.BookingType));
 

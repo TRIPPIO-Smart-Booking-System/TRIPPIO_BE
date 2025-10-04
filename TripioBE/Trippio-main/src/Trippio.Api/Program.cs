@@ -8,21 +8,25 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using StackExchange.Redis;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 using System.Text;
 using Trippio.Api;
 using Trippio.Api.Authorization;
 using Trippio.Api.Filters;
+using Trippio.Api.Idempotency;
 using Trippio.Api.Service;
 using Trippio.Core.ConfigOptions;
 using Trippio.Core.Domain.Identity;
+using Trippio.Core.Repositories;
 using Trippio.Core.SeedWorks;
 using Trippio.Core.Services;
 using Trippio.Data;
+using Trippio.Data.Repositories;
 using Trippio.Data.SeedWorks;
 using Trippio.Data.Service;
-
+using Trippio.Api.Idempotency;
 internal class Program
 {
     private static void Main(string[] args)
@@ -122,9 +126,21 @@ internal class Program
             builder.Services.Configure<JwtTokenSettings>(configuration.GetSection("JwtTokenSettings"));
             builder.Services.Configure<MediaSettings>(configuration.GetSection("MediaSettings"));
             builder.Services.AddScoped<ITokenService, TokenService>();
-
+            builder.Services.AddScoped<IBasketService, Trippio.Data.Service.BasketService>();
             // Register Email Service
             builder.Services.AddScoped<Trippio.Core.Services.IEmailService, Trippio.Data.Service.EmailService>();
+            //Order
+            builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+            //
+            builder.Services.AddScoped<IOrderService, Trippio.Data.Service.OrderService>();
+            builder.Services.AddScoped<IBookingService, Trippio.Data.Service.BookingService>();
+            //Payment
+            builder.Services.AddScoped<IPaymentService, Trippio.Data.Service.PaymentService>();
+            //paymentwebhook
+            builder.Services.AddScoped<IIdempotencyStore, RedisIdempotencyStore>();
+            //Redis
+            builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+            ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")!));
 
             // Add Health Checks
 
