@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace Trippio.Core.Domain.Entities
 {
@@ -29,6 +30,7 @@ namespace Trippio.Core.Domain.Entities
         public DateTime? ModifiedDate { get; set; }
 
         // Navigation Properties
+        [JsonIgnore]
         [ForeignKey("HotelId")]
         public virtual Hotel Hotel { get; set; } = null!;
     }
