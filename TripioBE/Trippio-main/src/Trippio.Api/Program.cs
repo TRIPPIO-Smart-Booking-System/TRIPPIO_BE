@@ -130,6 +130,8 @@ internal class Program
 
             builder.Services.Configure<JwtTokenSettings>(configuration.GetSection("JwtTokenSettings"));
             builder.Services.Configure<MediaSettings>(configuration.GetSection("MediaSettings"));
+            builder.Services.Configure<VNPayOptions>(configuration.GetSection("Payments:VNPay"));
+            builder.Services.Configure<RedirectUrlsOptions>(configuration.GetSection("Payments:RedirectUrls"));
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IBasketService, Trippio.Data.Service.BasketService>();
             // Register Email Service

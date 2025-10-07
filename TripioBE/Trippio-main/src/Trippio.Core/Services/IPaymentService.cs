@@ -13,5 +13,6 @@ namespace Trippio.Core.Services
         Task<BaseResponse<PaymentDto>> RefundPaymentAsync(Guid paymentId, decimal amount);
         Task<BaseResponse<PaymentDto>> UpdatePaymentStatusAsync(Guid id, string status);
         Task<BaseResponse<decimal>> GetTotalPaymentAmountAsync(DateTime from, DateTime to);
+        Task<string> CreatePaymentUrlAsync(CreatePaymentRequest request, string returnUrl, string ipAddress);
     }
 }
