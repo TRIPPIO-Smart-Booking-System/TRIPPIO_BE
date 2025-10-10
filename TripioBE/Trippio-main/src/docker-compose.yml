@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   # Database section
   trippio-sqlserver:
@@ -20,15 +22,40 @@ services:
       retries: 10
       start_period: 40s
 
-  # Infrastructure section
-  portainer:
-    image: portainer/portainer-ce:latest
-    container_name: trippio-portainer
+  # Redis (for Basket, Idempotency, etc.)
+  redis:
+    image: redis:7.2
+    container_name: trippio-redis
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --requirepass StrongRedisPass123!
+      --maxmemory-policy allkeys-lru
+    environment:
+      - REDIS_PASSWORD=StrongRedisPass123!
     ports:
-      - "9000:9000"
+      - "6379:6379"           # expose để debug từ host; có thể bỏ nếu không cần
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - portainer_data:/data
+      - redis_data:/data
+    networks:
+      - trippio_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "StrongRedisPass123!", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Optional UI quản trị Redis
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: trippio-redisinsight
+    ports:
+      - "8001:8001"
+    depends_on:
+      redis:
+        condition: service_healthy
     networks:
       - trippio_network
     restart: unless-stopped
@@ -43,11 +70,14 @@ services:
     environment:
       - DOTNET_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:7142
-      - ConnectionStrings__DefaultConnection=Server=trippio-sqlserver,1433;Database=TrippioDb;User Id=sa;Password=Strong!Pass123;Encrypt=False;TrustServerCertificate=True;MultipleActiveResultSets=true;
+      - ConnectionStrings__DefaultConnection=Server=trippio-sqlserver,1433;Database=TrippioDb;User Id=sa;Password=Strong!Pass123;Encrypt=False;TrustServerCertificate=True;MultipleActiveResultSets=true;    
+      - ConnectionStrings__Redis=redis:6379,password=StrongRedisPass123!,abortConnect=false,ssl=false
     ports:
       - "7142:7142"
     depends_on:
       trippio-sqlserver:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - trippio_network
@@ -71,3 +101,5 @@ volumes:
     name: trippio_sqlserver_data
   portainer_data:
     name: trippio_portainer_data
+  redis_data:
+    name: trippio_redis_data
