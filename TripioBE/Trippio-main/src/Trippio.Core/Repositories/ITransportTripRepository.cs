@@ -9,5 +9,6 @@ namespace Trippio.Core.Repositories
         Task<IEnumerable<TransportTrip>> GetTripsByRouteAsync(string departure, string destination);
         Task<IEnumerable<TransportTrip>> GetAvailableTripsAsync(DateTime departureDate);
         Task<TransportTrip?> GetTripWithTransportAsync(Guid id);
+        Task<IEnumerable<TransportTrip>> GetAllWithTransportAsync();
     }
 }

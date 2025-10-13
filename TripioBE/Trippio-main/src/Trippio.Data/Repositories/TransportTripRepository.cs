@@ -39,5 +39,12 @@ namespace Trippio.Data.Repositories
                 .Include(tt => tt.Transport)
                 .FirstOrDefaultAsync(tt => tt.Id == id);
         }
+
+        public async Task<IEnumerable<TransportTrip>> GetAllWithTransportAsync()
+        {
+            return await _context.TransportTrips
+                .Include(tt => tt.Transport)
+                .ToListAsync();
+        }
     }
 }

@@ -11,9 +11,24 @@ namespace Trippio.Data.Repositories
         {
         }
 
+        public async Task<IEnumerable<Transport>> GetAllTransportsWithTripsAsync()
+        {
+            return await _context.Transports
+                .Include(t => t.TransportTrips)
+                .ToListAsync();
+        }
+
+        public override async Task<IEnumerable<Transport>> GetAllAsync()
+        {
+            return await _context.Transports
+                .Include(t => t.TransportTrips)
+                .ToListAsync();
+        }
+
         public async Task<IEnumerable<Transport>> GetTransportsByTypeAsync(string transportType)
         {
             return await _context.Transports
+                .Include(t => t.TransportTrips)
                 .Where(t => t.TransportType.ToLower() == transportType.ToLower())
                 .ToListAsync();
         }
