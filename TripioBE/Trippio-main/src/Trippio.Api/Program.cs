@@ -125,7 +125,10 @@ internal class Program
             //builder.Services.AddScoped<Trippio.Core.Services.IBookingService, Trippio.Data.Services.BookingService>();
             //builder.Services.AddScoped<Trippio.Core.Services.IPaymentService, Trippio.Data.Services.PaymentService>();
             //builder.Services.AddScoped<Trippio.Core.Services.IBasketService, Trippio.Data.Services.BasketService>();
+            builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+            ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")!));
 
+            
             builder.Services.AddAutoMapper(typeof(Trippio.Core.Mappings.AutoMapping));
 
             builder.Services.Configure<JwtTokenSettings>(configuration.GetSection("JwtTokenSettings"));
