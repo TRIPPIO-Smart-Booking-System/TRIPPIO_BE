@@ -60,6 +60,18 @@ services:
       - trippio_network
     restart: unless-stopped
 
+  # Infrastructure section
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: trippio-portainer
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer_data:/data
+    networks:
+      - trippio_network
+    restart: unless-stopped
   # API section
   trippio.api:
     image: ${DOCKER_REGISTRY-}trippio-api:${PLATFORM:-linux}-${TAG:-latest}
