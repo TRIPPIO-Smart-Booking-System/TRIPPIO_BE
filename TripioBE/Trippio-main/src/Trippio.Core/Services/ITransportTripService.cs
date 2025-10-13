@@ -5,6 +5,7 @@ namespace Trippio.Core.Services
     public interface ITransportTripService
     {
         Task<IEnumerable<TransportTrip>> GetAllTransportTripsAsync();
+        Task<IEnumerable<TransportTrip>> GetAllTransportTripsWithTransportAsync();
         Task<TransportTrip?> GetTransportTripByIdAsync(Guid id);
         Task<TransportTrip?> GetTripWithTransportAsync(Guid id);
         Task<IEnumerable<TransportTrip>> GetTripsByTransportIdAsync(Guid transportId);

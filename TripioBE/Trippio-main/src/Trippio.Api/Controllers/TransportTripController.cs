@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Trippio.Core.Domain.Entities;
 using Trippio.Core.Services;
+using Trippio.Core.Models.TransportTrip;
 
 namespace Trippio.Api.Controllers
 {
@@ -21,13 +22,28 @@ namespace Trippio.Api.Controllers
         /// Get all transport trips
         /// </summary>
         [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<TransportTrip>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IEnumerable<TransportTripResponse>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll()
         {
             try
             {
-                var trips = await _transportTripService.GetAllTransportTripsAsync();
-                return Ok(trips);
+                var trips = await _transportTripService.GetAllTransportTripsWithTransportAsync();
+                var response = trips.Select(trip => new TransportTripResponse
+                {
+                    Id = trip.Id,
+                    TransportId = trip.TransportId,
+                    Departure = trip.Departure,
+                    Destination = trip.Destination,
+                    DepartureTime = trip.DepartureTime,
+                    ArrivalTime = trip.ArrivalTime,
+                    Price = trip.Price,
+                    AvailableSeats = trip.AvailableSeats,
+                    DateCreated = trip.DateCreated,
+                    ModifiedDate = trip.ModifiedDate,
+                    TransportName = trip.Transport?.Name,
+                    TransportType = trip.Transport?.TransportType
+                });
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -40,17 +56,33 @@ namespace Trippio.Api.Controllers
         /// Get transport trip by ID
         /// </summary>
         [HttpGet("{id:guid}")]
-        [ProducesResponseType(typeof(TransportTrip), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(TransportTripResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(Guid id)
         {
             try
             {
-                var trip = await _transportTripService.GetTransportTripByIdAsync(id);
+                var trip = await _transportTripService.GetTripWithTransportAsync(id);
                 if (trip == null)
                     return NotFound(new { message = $"Transport trip with ID {id} not found" });
 
-                return Ok(trip);
+                var response = new TransportTripResponse
+                {
+                    Id = trip.Id,
+                    TransportId = trip.TransportId,
+                    Departure = trip.Departure,
+                    Destination = trip.Destination,
+                    DepartureTime = trip.DepartureTime,
+                    ArrivalTime = trip.ArrivalTime,
+                    Price = trip.Price,
+                    AvailableSeats = trip.AvailableSeats,
+                    DateCreated = trip.DateCreated,
+                    ModifiedDate = trip.ModifiedDate,
+                    TransportName = trip.Transport?.Name,
+                    TransportType = trip.Transport?.TransportType
+                };
+
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -146,17 +178,52 @@ namespace Trippio.Api.Controllers
         /// Create a new transport trip
         /// </summary>
         [HttpPost]
-        [ProducesResponseType(typeof(TransportTrip), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(TransportTripResponse), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Create([FromBody] TransportTrip transportTrip)
+        public async Task<IActionResult> Create([FromBody] CreateTransportTripRequest request)
         {
             try
             {
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
+                // Map request to entity
+                var transportTrip = new TransportTrip
+                {
+                    TransportId = request.TransportId,
+                    Departure = request.Departure,
+                    Destination = request.Destination,
+                    DepartureTime = request.DepartureTime,
+                    ArrivalTime = request.ArrivalTime,
+                    Price = request.Price,
+                    AvailableSeats = request.AvailableSeats
+                };
+
                 var createdTrip = await _transportTripService.CreateTransportTripAsync(transportTrip);
-                return CreatedAtAction(nameof(GetById), new { id = createdTrip.Id }, createdTrip);
+                
+                // Map to response model with transport details
+                var response = new TransportTripResponse
+                {
+                    Id = createdTrip.Id,
+                    TransportId = createdTrip.TransportId,
+                    Departure = createdTrip.Departure,
+                    Destination = createdTrip.Destination,
+                    DepartureTime = createdTrip.DepartureTime,
+                    ArrivalTime = createdTrip.ArrivalTime,
+                    Price = createdTrip.Price,
+                    AvailableSeats = createdTrip.AvailableSeats,
+                    DateCreated = createdTrip.DateCreated,
+                    ModifiedDate = createdTrip.ModifiedDate,
+                    TransportName = createdTrip.Transport?.Name,
+                    TransportType = createdTrip.Transport?.TransportType
+                };
+
+                return CreatedAtAction(nameof(GetById), new { id = createdTrip.Id }, response);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Validation error creating transport trip");
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {

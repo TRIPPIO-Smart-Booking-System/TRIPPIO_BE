@@ -18,7 +18,7 @@ namespace Trippio.Api.Controllers
         }
 
         /// <summary>
-        /// Get all transports
+        /// Get all transports with trips
         /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<Transport>), StatusCodes.Status200OK)]
@@ -26,7 +26,7 @@ namespace Trippio.Api.Controllers
         {
             try
             {
-                var transports = await _transportService.GetAllTransportsAsync();
+                var transports = await _transportService.GetAllTransportsWithTripsAsync();
                 return Ok(transports);
             }
             catch (Exception ex)

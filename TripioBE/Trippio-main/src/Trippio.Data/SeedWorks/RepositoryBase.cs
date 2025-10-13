@@ -28,7 +28,7 @@ namespace Trippio.Data.SeedWorks
             return _dbSet.Where(expression).ToList();
         }
 
-        public async Task<IEnumerable<T>> GetAllAsync()
+        public virtual async Task<IEnumerable<T>> GetAllAsync()
         {
             return await _dbSet.ToListAsync();
         }

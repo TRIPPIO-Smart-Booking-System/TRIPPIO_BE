@@ -21,6 +21,11 @@ namespace Trippio.Data.Services
             return await _transportRepository.GetAllAsync();
         }
 
+        public async Task<IEnumerable<Transport>> GetAllTransportsWithTripsAsync()
+        {
+            return await _transportRepository.GetAllTransportsWithTripsAsync();
+        }
+
         public async Task<Transport?> GetTransportByIdAsync(Guid id)
         {
             return await _transportRepository.GetByIdAsync(id);
