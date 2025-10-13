@@ -1,6 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Trippio.Core.Models.Common;
 using Trippio.Core.Services;
+using Trippio.Core.Models.Payment;
+using Trippio.Core.ConfigOptions;
+using Microsoft.Extensions.Options;
 
 namespace Trippio.Api.Controllers;
 
@@ -10,13 +13,15 @@ public class CheckoutController : ControllerBase
 {
     private readonly IBasketService _basket;
     private readonly IOrderService _orders;
+    private readonly IPaymentService _payments;
+    private readonly RedirectUrlsOptions _redirectUrls;
 
-    public CheckoutController(IBasketService basket, IOrderService orders)
+    public CheckoutController(IBasketService basket, IOrderService orders, IPaymentService payments, IOptions<RedirectUrlsOptions> redirectUrls)
     {
-        _basket = basket; _orders = orders;
+        _basket = basket; _orders = orders; _payments = payments; _redirectUrls = redirectUrls.Value;
     }
 
-    public record StartCheckoutDto(Guid UserId, string PaymentMethod);
+    public record StartCheckoutDto(Guid UserId, string PaymentMethod, string ClientType);
 
     // B -> C -> D -> E
     [HttpPost("start")]
@@ -28,14 +33,21 @@ public class CheckoutController : ControllerBase
 
         await _basket.ClearAsync(dto.UserId, ct);
         var order = created.Data!;
-        var paymentUrl = Url.ActionLink("Return", "Payment", new
+
+        var paymentRequest = new CreatePaymentRequest
         {
-            orderId = order.Id,
-            status = "Paid",
-            amount = order.TotalAmount,
-            userId = order.UserId,
-            method = dto.PaymentMethod
-        })!;
+            UserId = dto.UserId,
+            OrderId = order.Id,
+            Amount = order.TotalAmount,
+            PaymentMethod = dto.PaymentMethod
+        };
+
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+
+        // Tạo return URL dựa trên client type
+        var returnUrl = dto.ClientType.ToLower() == "mobile" ? _redirectUrls.Mobile : _redirectUrls.Web;
+
+        var paymentUrl = await _payments.CreatePaymentUrlAsync(paymentRequest, returnUrl, ipAddress);
 
         return Ok(BaseResponse<object>.Success(new { orderId = order.Id, paymentUrl }));
     }

@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Trippio.Core.Services;
+using Trippio.Core.ConfigOptions;
+using Microsoft.Extensions.Options;
 
 namespace Trippio.Api.Controllers
 {
@@ -10,10 +12,12 @@ namespace Trippio.Api.Controllers
     public class PaymentController : ControllerBase
     {
         private readonly IPaymentService _payments;
+        private readonly VNPayOptions _vnPayOptions;
 
-        public PaymentController(IPaymentService payments)
+        public PaymentController(IPaymentService payments, IOptions<VNPayOptions> vnPayOptions)
         {
             _payments = payments;
+            _vnPayOptions = vnPayOptions.Value;
         }
 
         [HttpGet("user/{userId:guid}")]
@@ -63,6 +67,33 @@ namespace Trippio.Api.Controllers
         {
             var result = await _payments.GetTotalPaymentAmountAsync(from, to);
             return StatusCode(result.Code, result);
+        }
+
+        [HttpGet("return")]
+        [AllowAnonymous]  // Không cần auth cho return từ VNPay
+        public async Task<IActionResult> Return()
+        {
+            // Validate signature (đơn giản, có thể cải thiện)
+            var secureHash = Request.Query["vnp_SecureHash"];
+            // ... logic validate hash ...
+
+            var paymentIdStr = Request.Query["vnp_TxnRef"];
+            var responseCode = Request.Query["vnp_ResponseCode"];
+
+            if (Guid.TryParse(paymentIdStr, out var paymentId))
+            {
+                if (responseCode == "00")  // Thành công
+                {
+                    await _payments.UpdatePaymentStatusAsync(paymentId, "Paid");
+                    return Redirect("http://localhost:3000/payment-success");  // Redirect đến frontend
+                }
+                else
+                {
+                    await _payments.UpdatePaymentStatusAsync(paymentId, "Failed");
+                    return Redirect("http://localhost:3000/payment-failed");
+                }
+            }
+            return BadRequest("Invalid payment ID");
         }
     }
 }
