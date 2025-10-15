@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using Trippio.Core.Domain.Identity;
 
 namespace Trippio.Core.Domain.Entities
-{
+{   
     [Table("Bookings")]
     public class Booking
     {
@@ -26,7 +26,8 @@ namespace Trippio.Core.Domain.Entities
 
         [Required]
         [MaxLength(50)]
-        public required string Status { get; set; }
+        [Column("Status")]     
+        public BookingStatus Status { get; set; }
 
         public DateTime DateCreated { get; set; }
         public DateTime? ModifiedDate { get; set; }

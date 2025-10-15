@@ -106,9 +106,9 @@ namespace Trippio.Data.Service
                     if (booking != null)
                     {
                         if (parsedStatus == PaymentStatus.Paid)
-                            booking.Status = "Confirmed";
+                            booking.Status = BookingStatus.Confirmed;
                         else if (parsedStatus is PaymentStatus.Failed or PaymentStatus.Refunded)
-                            booking.Status = "Cancelled";
+                            booking.Status = BookingStatus.Cancelled;
 
                         booking.ModifiedDate = DateTime.UtcNow;
 
@@ -151,7 +151,7 @@ namespace Trippio.Data.Service
                     var booking = await _bookingRepo.GetByIdAsync(payment.BookingId.Value);
                     if (booking != null)
                     {
-                        booking.Status = "Cancelled";
+                        booking.Status = BookingStatus.Cancelled;
                         booking.ModifiedDate = DateTime.UtcNow;
                     }
                 }

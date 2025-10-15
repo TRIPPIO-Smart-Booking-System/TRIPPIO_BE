@@ -3,6 +3,9 @@ using Trippio.Core.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Trippio.Core.Models.Booking;
+
 
 namespace Trippio.Data
 {
@@ -11,7 +14,9 @@ namespace Trippio.Data
         public TrippioDbContext(DbContextOptions<TrippioDbContext> options) : base(options)
         {
         }
+        
 
+        public DbSet<RawCol> RawCols { get; set; }
         // Customer & Address
         public DbSet<Customer> Customers { get; set; }
         public DbSet<Address> Addresses { get; set; }
@@ -52,6 +57,22 @@ namespace Trippio.Data
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+            var statusConverter = new ValueConverter<BookingStatus, string>(
+        v => v.ToString(),
+        v => (BookingStatus)Enum.Parse(typeof(BookingStatus), v)
+    );
+
+
+            builder.Entity<Booking>()
+        .Property(b => b.Status)
+        .HasConversion(statusConverter)
+        .HasMaxLength(50);
+            //test raw sql query
+            builder.Entity<RawCol>()
+           .HasNoKey()
+           .ToView(null);
+            builder.Entity<RawCol>()
+                   .Metadata.SetIsTableExcludedFromMigrations(true);
 
             // Identity tables configuration
             builder.Entity<IdentityUserClaim<Guid>>().ToTable("AppUserClaims")

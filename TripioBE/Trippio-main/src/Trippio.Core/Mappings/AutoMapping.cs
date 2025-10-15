@@ -51,7 +51,8 @@ namespace Trippio.Core.Mappings
             CreateMap<UpdateUserRequest, AppUser>();
 
             // Booking mappings
-            CreateMap<Booking, BookingDto>();
+            CreateMap<Booking, BookingDto>()
+                .ForMember(d => d.Status, o => o.MapFrom(s => s.Status.ToString()));
 
             // ExtraService mappings
             CreateMap<ExtraService, ExtraServiceDto>();

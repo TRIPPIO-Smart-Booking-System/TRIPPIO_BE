@@ -47,9 +47,17 @@ namespace Trippio.Data.Repositories
                 PageSize = pageSize
             };
         }
-
         public async Task<IEnumerable<Booking>> GetByStatusAsync(string status)
         {
+            if (!Enum.TryParse<BookingStatus>(status, true, out var parsed))
+            {
+                return Enumerable.Empty<Booking>();
+            }
+            return await GetByStatusAsync(parsed);
+        }
+        public async Task<IEnumerable<Booking>> GetByStatusAsync(BookingStatus status)
+        {
+            
             return await _context.Bookings
                 .Where(b => b.Status == status)
                 .Include(b => b.User)
@@ -99,7 +107,7 @@ namespace Trippio.Data.Repositories
         public async Task<decimal> GetTotalBookingValueAsync(DateTime from, DateTime to)
         {
             return await _context.Bookings
-                .Where(b => b.BookingDate >= from && b.BookingDate <= to && b.Status == "Confirmed")
+                .Where(b => b.BookingDate >= from && b.BookingDate <= to && b.Status == BookingStatus.Confirmed)
                 .SumAsync(b => b.TotalAmount);
         }
 

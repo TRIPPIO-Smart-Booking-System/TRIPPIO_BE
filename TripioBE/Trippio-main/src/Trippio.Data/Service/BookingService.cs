@@ -42,7 +42,10 @@ namespace Trippio.Data.Service
 
         public async Task<BaseResponse<IEnumerable<BookingDto>>> GetByStatusAsync(string status)
         {
-            var data = await _bookingRepo.GetByStatusAsync(status);
+            if (!Enum.TryParse<BookingStatus>(status, true, out var enumStatus))
+                return BaseResponse<IEnumerable<BookingDto>>.Error($"Unknown status '{status}'", 400);
+
+            var data = await _bookingRepo.GetByStatusAsync(enumStatus);
             var mapped = _mapper.Map<IEnumerable<BookingDto>>(data);
             return BaseResponse<IEnumerable<BookingDto>>.Success(mapped);
         }
@@ -56,14 +59,16 @@ namespace Trippio.Data.Service
 
         public async Task<BaseResponse<BookingDto>> UpdateStatusAsync(Guid id, string status)
         {
+            if (!TryParseStatus(status, out var parsed))
+                return BaseResponse<BookingDto>.Error($"Unknown status '{status}'", 400);
+
             var entity = await _bookingRepo.GetByIdAsync(id);
-            if (entity == null)
-                return BaseResponse<BookingDto>.NotFound("Booking not found");
+            if (entity == null) return BaseResponse<BookingDto>.NotFound("Booking not found");
 
-            entity.Status = status;
+            entity.Status = parsed;                     
             entity.ModifiedDate = DateTime.UtcNow;
-            await _uow.CompleteAsync();
 
+            await _uow.CompleteAsync();
             return BaseResponse<BookingDto>.Success(_mapper.Map<BookingDto>(entity), "Status updated");
         }
 
@@ -76,13 +81,13 @@ namespace Trippio.Data.Service
             if (entity.UserId != userId)
                 return BaseResponse<bool>.Error("You cannot cancel someone else's booking", 403);
 
-            if (entity.Status == "Cancelled")
+            if (entity.Status == BookingStatus.Cancelled)
                 return BaseResponse<bool>.Success(true, "Booking already cancelled");
 
-            if (entity.Status != "Pending")
+            if (entity.Status != BookingStatus.Pending)
                 return BaseResponse<bool>.Error("Only pending bookings can be cancelled", 409);
 
-            entity.Status = "Cancelled";
+            entity.Status = BookingStatus.Cancelled;
             entity.ModifiedDate = DateTime.UtcNow;
             await _uow.CompleteAsync();
 
@@ -96,6 +101,11 @@ namespace Trippio.Data.Service
 
             var total = await _bookingRepo.GetTotalBookingValueAsync(from, to);
             return BaseResponse<decimal>.Success(total);
+        }
+
+        private bool TryParseStatus(string status, out BookingStatus parsed)
+        {
+            return Enum.TryParse(status, true, out parsed);
         }
     }
 }

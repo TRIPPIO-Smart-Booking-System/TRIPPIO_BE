@@ -441,7 +441,7 @@ namespace Trippio.Data
                         BookingType = "Travel Package",
                         BookingDate = DateTime.UtcNow.AddDays(-i),
                         TotalAmount = 500 + (i * 100),
-                        Status = i < 4 ? "Confirmed" : "Pending",
+                        Status = i < 4 ? BookingStatus.Confirmed : BookingStatus.Pending,
                         DateCreated = DateTime.UtcNow.AddDays(-i),
                         ModifiedDate = DateTime.UtcNow.AddDays(-i)
                     };
