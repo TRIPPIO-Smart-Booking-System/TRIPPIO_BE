@@ -6,6 +6,7 @@ namespace Trippio.Core.Models.Auth
         public string Message { get; set; } = string.Empty;
         public bool RequireEmailVerification { get; set; }
         public bool RequirePhoneVerification { get; set; }
+        public string? Email { get; set; }
         public LoginResponse? LoginResponse { get; set; }
 
     }

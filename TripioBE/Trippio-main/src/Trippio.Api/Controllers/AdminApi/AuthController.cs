@@ -98,6 +98,7 @@ namespace Trippio.Api.Controllers.AdminApi
                     Message = "Email verification required for first login. OTP has been sent to your email.",
                     RequireEmailVerification = true,
                     RequirePhoneVerification = false,
+                    Email = user.Email
                 });
             }
 
@@ -299,6 +300,66 @@ namespace Trippio.Api.Controllers.AdminApi
             await _emailService.SendOtpEmailAsync(user.Email!, user.GetFullName()!, otp);
 
             return Ok(new { message = "OTP has been resent to your email" });
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+            {
+                // Don't reveal that the user does not exist for security reasons
+                return Ok(new { message = "If your email exists in our system, you will receive a password reset OTP shortly." });
+            }
+
+            // Generate OTP for password reset
+            var otp = GenerateOtp();
+            user.PasswordResetOtp = otp;
+            user.PasswordResetOtpExpiry = DateTime.UtcNow.AddMinutes(10); // OTP expires in 10 minutes
+            await _userManager.UpdateAsync(user);
+
+            // Send OTP email for password reset
+            await _emailService.SendPasswordResetOtpEmailAsync(user.Email!, user.GetFullName()!, otp);
+
+            return Ok(new { message = "If your email exists in our system, you will receive a password reset OTP shortly." });
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+            {
+                return BadRequest(new { message = "Invalid request" });
+            }
+
+            // Verify OTP
+            if (user.PasswordResetOtp != request.Otp || user.PasswordResetOtpExpiry < DateTime.UtcNow)
+            {
+                return BadRequest(new { message = "Invalid or expired OTP" });
+            }
+
+            // Reset password
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(new { message = "Failed to reset password", errors = result.Errors.Select(e => e.Description) });
+            }
+
+            // Clear OTP fields
+            user.PasswordResetOtp = null;
+            user.PasswordResetOtpExpiry = null;
+            await _userManager.UpdateAsync(user);
+
+            return Ok(new { message = "Password has been reset successfully. You can now login with your new password." });
         }
 
         private string GenerateOtp()
