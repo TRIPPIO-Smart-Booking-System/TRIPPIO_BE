@@ -18,6 +18,10 @@ namespace Trippio.Api.Controllers.AdminApi
 {
     [Route("api/admin/auth")]
     [ApiController]
+    // NOTE: Permission logic has been temporarily disabled in this controller
+    // - GetPermissionsByUserIdAsync method is commented out
+    // - Permissions claim is not included in JWT tokens
+    // - Only roles are included in the authentication response
     public class AuthController : ControllerBase
     {
         private readonly UserManager<AppUser> _userManager;
@@ -120,40 +124,41 @@ namespace Trippio.Api.Controllers.AdminApi
             });
         }
 
-        private async Task<List<string>> GetPermissionsByUserIdAsync(string userId)
-        {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-                return new List<string>();
+        // TEMPORARILY DISABLED - Permission logic
+        // private async Task<List<string>> GetPermissionsByUserIdAsync(string userId)
+        // {
+        //     var user = await _userManager.FindByIdAsync(userId);
+        //     if (user == null)
+        //         return new List<string>();
 
-            var roles = await _userManager.GetRolesAsync(user);
-            var permissions = new List<string>();
-            var allPermissions = new List<RoleClaimsDto>();
+        //     var roles = await _userManager.GetRolesAsync(user);
+        //     var permissions = new List<string>();
+        //     var allPermissions = new List<RoleClaimsDto>();
 
-            if (roles.Contains(Roles.Admin))
-            {
-                var types = typeof(Permissions).GetNestedTypes();
-                foreach (var type in types)
-                {
-                    allPermissions.GetPermissions(type);
-                }
-                permissions.AddRange(allPermissions.Select(x => x.Value));
-            }
-            else
-            {
-                foreach (var roleName in roles)
-                {
-                    var role = await _roleManager.FindByNameAsync(roleName);
-                    if (role != null)
-                    {
-                        var claims = await _roleManager.GetClaimsAsync(role);
-                        var roleClaimsValues = claims.Select(x => x.Value).ToList();
-                        permissions.AddRange(roleClaimsValues);
-                    }
-                }
-            }
-            return permissions.Distinct().ToList();
-        }
+        //     if (roles.Contains(Roles.Admin))
+        //     {
+        //         var types = typeof(Permissions).GetNestedTypes();
+        //         foreach (var type in types)
+        //         {
+        //             allPermissions.GetPermissions(type);
+        //         }
+        //         permissions.AddRange(allPermissions.Select(x => x.Value));
+        //     }
+        //     else
+        //     {
+        //         foreach (var roleName in roles)
+        //         {
+        //             var role = await _roleManager.FindByNameAsync(roleName);
+        //             if (role != null)
+        //             {
+        //                 var claims = await _roleManager.GetClaimsAsync(role);
+        //                 var roleClaimsValues = claims.Select(x => x.Value).ToList();
+        //                 permissions.AddRange(roleClaimsValues);
+        //             }
+        //         }
+        //     }
+        //     return permissions.Distinct().ToList();
+        // }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
@@ -372,7 +377,7 @@ namespace Trippio.Api.Controllers.AdminApi
         {
             // Authorization
             var roles = await _userManager.GetRolesAsync(user);
-            var permissions = await GetPermissionsByUserIdAsync(user.Id.ToString());
+            // var permissions = await GetPermissionsByUserIdAsync(user.Id.ToString()); // TEMPORARILY DISABLED
 
             var claims = new[]
             {
@@ -382,7 +387,7 @@ namespace Trippio.Api.Controllers.AdminApi
                 new Claim(ClaimTypes.Name, user.UserName ?? string.Empty),
                 new Claim(UserClaims.FirstName, user.FirstName),
                 new Claim(UserClaims.Roles, string.Join(";", roles)),
-                new Claim(UserClaims.Permissions, JsonSerializer.Serialize(permissions)),
+                // new Claim(UserClaims.Permissions, JsonSerializer.Serialize(permissions)), // TEMPORARILY DISABLED
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
