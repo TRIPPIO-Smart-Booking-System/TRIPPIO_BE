@@ -101,5 +101,28 @@ namespace Trippio.Data.Service
 
             await SendEmailAsync(to, subject, htmlBody);
         }
+
+        public async Task SendPasswordResetOtpEmailAsync(string to, string name, string otp)
+        {
+            var subject = "Đặt lại mật khẩu Trippio - Mã OTP";
+            var htmlBody = $@"
+                <html>
+                <body>
+                    <h2>Xin chào {name}!</h2>
+                    <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản Trippio của bạn.</p>
+                    <p>Để đặt lại mật khẩu, vui lòng sử dụng mã OTP sau:</p>
+                    <div style='background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; color: #333;'>
+                        {otp}
+                    </div>
+                    <p>Mã OTP này sẽ hết hạn trong vòng 10 phút.</p>
+                    <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này và mật khẩu của bạn sẽ không thay đổi.</p>
+                    <br>
+                    <p>Trân trọng,</p>
+                    <p>Đội ngũ Trippio</p>
+                </body>
+                </html>";
+
+            await SendEmailAsync(to, subject, htmlBody);
+        }
     }
 }

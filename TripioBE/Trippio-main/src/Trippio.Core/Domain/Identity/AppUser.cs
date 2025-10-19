@@ -40,6 +40,10 @@ namespace Trippio.Core.Domain.Identity
         public string? EmailOtp { get; set; }
         public DateTime? EmailOtpExpiry { get; set; }
 
+        // Password reset fields
+        public string? PasswordResetOtp { get; set; }
+        public DateTime? PasswordResetOtpExpiry { get; set; }
+
         public bool IsFirstLogin { get; set; } = true;
 
         public string? GetFullName() => $"{FirstName} {LastName}";
