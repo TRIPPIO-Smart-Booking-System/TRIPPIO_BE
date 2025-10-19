@@ -6,6 +6,10 @@ using Microsoft.Extensions.Options;
 
 namespace Trippio.Api.Controllers
 {
+    // ⚠️ COMMENTED OUT - SANDBOX PAYMENT (VNPay)
+    // This controller is for VNPay sandbox testing only
+    // Use PayOSController for real money payments
+    /*
     [ApiController]
     [Route("api/[controller]")]
     [Authorize] 
@@ -96,4 +100,5 @@ namespace Trippio.Api.Controllers
             return BadRequest("Invalid payment ID");
         }
     }
+    */
 }
