@@ -53,6 +53,18 @@ namespace Trippio.Data
                 await _roleManager.CreateAsync(customerRole);
             }
 
+            var staffRole = await _roleManager.FindByNameAsync("staff");
+            if (staffRole == null)
+            {
+                staffRole = new AppRole
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "staff",
+                    DisplayName = "Nhân viên"
+                };
+                await _roleManager.CreateAsync(staffRole);
+            }
+
             // Helper method to create user using UserManager
             async Task<AppUser> CreateUserIfNotExists(string userName, string email, string phone, string firstName, string lastName, string roleName, bool isAdmin = false)
             {
@@ -96,6 +108,33 @@ namespace Trippio.Data
             await CreateUserIfNotExists("customer1", "customer1@gmail.com", "0901234567", "Nguyễn", "Văn A", "customer");
             await CreateUserIfNotExists("customer2", "customer2@gmail.com", "0902345678", "Trần", "Thị B", "customer");
             await CreateUserIfNotExists("customer3", "customer3@gmail.com", "0903456789", "Lê", "Văn C", "customer");
+
+            // Create tristaff user with false fields
+            var tristaffUser = await _userManager.FindByNameAsync("tristaff");
+            if (tristaffUser == null)
+            {
+                tristaffUser = new AppUser
+                {
+                    Id = Guid.NewGuid(),
+                    FirstName = "Tri",
+                    LastName = "Staff",
+                    Email = "Trihoang1510@gmail.com",
+                    UserName = "tristaff",
+                    PhoneNumber = "0123456789",
+                    IsActive = false,
+                    DateCreated = DateTime.UtcNow,
+                    Dob = new DateTime(1990, 1, 1),
+                    IsEmailVerified = false,
+                    IsFirstLogin = false,
+                    Balance = 0,
+                    LoyaltyAmountPerPost = 0
+                };
+                var result = await _userManager.CreateAsync(tristaffUser, "Staff@123$");
+                if (result.Succeeded)
+                {
+                    await _userManager.AddToRoleAsync(tristaffUser, "staff");
+                }
+            }
         }
 
         private async Task SeedHotelsAndRooms(TrippioDbContext context)
