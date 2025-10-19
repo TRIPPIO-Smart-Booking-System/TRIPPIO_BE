@@ -132,6 +132,8 @@ internal class Program
             builder.Services.Configure<MediaSettings>(configuration.GetSection("MediaSettings"));
             builder.Services.Configure<VNPayOptions>(configuration.GetSection("Payments:VNPay"));
             builder.Services.Configure<RedirectUrlsOptions>(configuration.GetSection("Payments:RedirectUrls"));
+            // Register PayOS Configuration for Real Money Payment
+            builder.Services.Configure<PayOSSettings>(configuration.GetSection("PayOS"));
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IBasketService, Trippio.Data.Service.BasketService>();
             // Register Email Service
