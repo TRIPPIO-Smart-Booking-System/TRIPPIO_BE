@@ -78,6 +78,21 @@ services:
       - trippio_network
     restart: unless-stopped
 
+  ngrok:
+    image: wernight/ngrok:latest
+    container_name: trippio-ngrok
+    environment:
+      - NGROK_AUTH=<YOUR_NGROK_AUTH_TOKEN>  # Thay bằng token thật
+    command: ngrok http trippio.api:7142 --hostname=uninvigorated-unmoribundly-nayeli.ngrok-free.dev
+    ports:
+      - "4040:4040"  # Ngrok web interface
+    depends_on:
+      trippio.api:
+        condition: service_healthy
+    networks:
+      - trippio_network
+    restart: unless-stopped
+
 # =========================
 # Networks & Volumes
 # =========================
