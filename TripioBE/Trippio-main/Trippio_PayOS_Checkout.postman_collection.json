@@ -1,0 +1,501 @@
+{
+  "info": {
+    "_postman_id": "checkout-payos-collection",
+    "name": "Trippio - PayOS Checkout API",
+    "description": "Complete API collection for testing PayOS checkout integration",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Basket",
+      "item": [
+        {
+          "name": "Add Item to Basket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"hotel-deluxe-001\",\n  \"productName\": \"Deluxe Room - Sea View\",\n  \"price\": 2500000,\n  \"quantity\": 2,\n  \"productType\": \"Hotel\",\n  \"imageUrl\": \"https://example.com/room.jpg\",\n  \"description\": \"Luxury room with breakfast\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/basket/{{userId}}/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["basket", "{{userId}}", "items"]
+            },
+            "description": "Add a product/service to user's basket"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Basket",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/basket/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["basket", "{{userId}}"]
+            },
+            "description": "Retrieve user's current basket from Redis"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Item Quantity",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"hotel-deluxe-001\",\n  \"quantity\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/basket/{{userId}}/items/quantity",
+              "host": ["{{baseUrl}}"],
+              "path": ["basket", "{{userId}}", "items", "quantity"]
+            },
+            "description": "Update quantity of an item in basket"
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Item from Basket",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/basket/{{userId}}/items/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["basket", "{{userId}}", "items", "{{productId}}"]
+            },
+            "description": "Remove a specific item from basket"
+          },
+          "response": []
+        },
+        {
+          "name": "Clear Basket",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/basket/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["basket", "{{userId}}"]
+            },
+            "description": "Remove all items from basket"
+          },
+          "response": []
+        }
+      ],
+      "description": "Basket management endpoints (Redis cache)"
+    },
+    {
+      "name": "Checkout",
+      "item": [
+        {
+          "name": "Start Checkout (PayOS)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Extract orderCode for subsequent requests",
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.orderCode) {",
+                  "        pm.environment.set('orderCode', jsonData.data.orderCode);",
+                  "        console.log('OrderCode saved:', jsonData.data.orderCode);",
+                  "        console.log('Checkout URL:', jsonData.data.checkoutUrl);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"buyerName\": \"Nguyễn Văn A\",\n  \"buyerEmail\": \"nguyenvana@example.com\",\n  \"buyerPhone\": \"0912345678\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/checkout/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["checkout", "start"]
+            },
+            "description": "Create order from basket and generate PayOS payment link.\n\nFlow:\n1. Get basket from Redis\n2. Create Order in DB\n3. Clear basket\n4. Generate PayOS payment link\n5. Return checkout URL + QR code"
+          },
+          "response": []
+        },
+        {
+          "name": "Check Payment Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/checkout/status/{{orderCode}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["checkout", "status", "{{orderCode}}"]
+            },
+            "description": "Get payment status from PayOS.\n\nPossible statuses:\n- PENDING: Awaiting payment\n- PAID: Payment successful\n- CANCELLED: Payment cancelled\n- EXPIRED: Payment link expired"
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "\"User decided not to purchase\""
+            },
+            "url": {
+              "raw": "{{baseUrl}}/checkout/cancel/{{orderCode}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["checkout", "cancel", "{{orderCode}}"]
+            },
+            "description": "Cancel payment link in PayOS.\n\nNote: Can only cancel if status is PENDING."
+          },
+          "response": []
+        }
+      ],
+      "description": "Checkout and payment endpoints (PayOS integration)"
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Get Order by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/order/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["order", "{{orderId}}"]
+            },
+            "description": "Get order details by order ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/order/user/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["order", "user", "{{userId}}"]
+            },
+            "description": "Get all orders for a specific user"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Orders by Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/order/status/{{orderStatus}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["order", "status", "{{orderStatus}}"]
+            },
+            "description": "Get orders by status.\n\nStatuses:\n- Pending\n- Confirmed\n- Processing\n- Shipped\n- Delivered\n- Cancelled"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Order Status",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/order/{{orderId}}/status?status={{orderStatus}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["order", "{{orderId}}", "status"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "{{orderStatus}}"
+                }
+              ]
+            },
+            "description": "Update order status (Admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Order",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/order/{{orderId}}/cancel?userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["order", "{{orderId}}", "cancel"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Cancel an order (User or Admin)"
+          },
+          "response": []
+        }
+      ],
+      "description": "Order management endpoints"
+    },
+    {
+      "name": "Complete Flow - Happy Path",
+      "item": [
+        {
+          "name": "1. Add Item to Basket",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Item added successfully', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.code).to.eql(200);",
+                  "    pm.expect(jsonData.data.items).to.be.an('array');",
+                  "    pm.expect(jsonData.data.total).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"hotel-suite-premium\",\n  \"productName\": \"Premium Suite with Ocean View\",\n  \"price\": 5000000,\n  \"quantity\": 1,\n  \"productType\": \"Hotel\",\n  \"description\": \"Luxury suite with balcony\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/basket/{{userId}}/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["basket", "{{userId}}", "items"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Get Basket",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Basket retrieved', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.code).to.eql(200);",
+                  "    pm.expect(jsonData.data.items.length).to.be.above(0);",
+                  "    console.log('Total amount:', jsonData.data.total);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/basket/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["basket", "{{userId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Start Checkout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Checkout successful', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.code).to.eql(200);",
+                  "    pm.expect(jsonData.data.checkoutUrl).to.be.a('string');",
+                  "    pm.expect(jsonData.data.orderCode).to.be.a('number');",
+                  "    ",
+                  "    // Save orderCode for next steps",
+                  "    pm.environment.set('orderCode', jsonData.data.orderCode);",
+                  "    ",
+                  "    console.log('✅ Order created:', jsonData.data.orderCode);",
+                  "    console.log('💳 Payment URL:', jsonData.data.checkoutUrl);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"buyerName\": \"Test User\",\n  \"buyerEmail\": \"testuser@trippio.com\",\n  \"buyerPhone\": \"0901234567\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/checkout/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["checkout", "start"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. Check Payment Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status retrieved', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.code).to.eql(200);",
+                  "    console.log('Payment status:', jsonData.data.status);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/checkout/status/{{orderCode}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["checkout", "status", "{{orderCode}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. Get Order Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Order details retrieved', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.code).to.eql(200);",
+                  "    console.log('Order status:', jsonData.data.status);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/order/{{orderCode}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["order", "{{orderCode}}"]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Complete user flow: Add to basket → Checkout → Pay → Check status\n\nRun all requests in sequence to test the entire checkout process."
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://localhost:5001/api",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "your_jwt_token_here",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "type": "string"
+    },
+    {
+      "key": "orderCode",
+      "value": "123",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "123",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "hotel-deluxe-001",
+      "type": "string"
+    },
+    {
+      "key": "orderStatus",
+      "value": "Pending",
+      "type": "string"
+    }
+  ]
+}

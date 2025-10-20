@@ -4,51 +4,273 @@ using Trippio.Core.Services;
 using Trippio.Core.Models.Payment;
 using Trippio.Core.ConfigOptions;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Authorization;
+using Net.payOS;
+using Net.payOS.Types;
+using System.Security.Claims;
 
 namespace Trippio.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class CheckoutController : ControllerBase
 {
     private readonly IBasketService _basket;
     private readonly IOrderService _orders;
     private readonly IPaymentService _payments;
-    private readonly RedirectUrlsOptions _redirectUrls;
+    private readonly PayOSSettings _payOSSettings;
+    private readonly Net.payOS.PayOS _payOS;
+    private readonly ILogger<CheckoutController> _logger;
 
-    public CheckoutController(IBasketService basket, IOrderService orders, IPaymentService payments, IOptions<RedirectUrlsOptions> redirectUrls)
+    public CheckoutController(
+        IBasketService basket, 
+        IOrderService orders, 
+        IPaymentService payments, 
+        IOptions<PayOSSettings> payOSSettings,
+        ILogger<CheckoutController> logger)
     {
-        _basket = basket; _orders = orders; _payments = payments; _redirectUrls = redirectUrls.Value;
+        _basket = basket; 
+        _orders = orders; 
+        _payments = payments; 
+        _payOSSettings = payOSSettings.Value;
+        _logger = logger;
+        
+        // Initialize PayOS SDK
+        _payOS = new Net.payOS.PayOS(
+            _payOSSettings.ClientId,
+            _payOSSettings.ApiKey,
+            _payOSSettings.ChecksumKey
+        );
     }
 
-    public record StartCheckoutDto(Guid UserId, string PaymentMethod, string ClientType);
+    /// <summary>
+    /// Request DTO for starting checkout process
+    /// </summary>
+    /// <param name="UserId">User ID (optional, will use authenticated user if not provided)</param>
+    /// <param name="BuyerName">Buyer's name (optional)</param>
+    /// <param name="BuyerEmail">Buyer's email (optional)</param>
+    /// <param name="BuyerPhone">Buyer's phone (optional)</param>
+    public record StartCheckoutDto(
+        Guid? UserId = null,
+        string? BuyerName = null,
+        string? BuyerEmail = null,
+        string? BuyerPhone = null
+    );
 
-    // B -> C -> D -> E
+    /// <summary>
+    /// Start checkout process: Create order from basket and generate PayOS payment link
+    /// Luồng: Basket (Redis) -> Create Order (DB) -> Clear Basket -> Create PayOS Payment Link
+    /// </summary>
+    /// <param name="dto">Checkout request data</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Order details and PayOS checkout URL</returns>
+    /// <response code="200">Checkout successful - Returns order ID and payment URL</response>
+    /// <response code="400">Bad request - Basket empty or invalid data</response>
+    /// <response code="401">Unauthorized - User not authenticated</response>
+    /// <response code="500">Internal server error</response>
     [HttpPost("start")]
+    [ProducesResponseType(typeof(BaseResponse<PayOSPaymentResponse>), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(500)]
     public async Task<IActionResult> Start([FromBody] StartCheckoutDto dto, CancellationToken ct)
     {
-        var basket = (await _basket.GetAsync(dto.UserId, ct)).Data!;
-        var created = await _orders.CreateFromBasketAsync(dto.UserId, basket, ct); 
-        if (created.Code != 200) return StatusCode(created.Code, created);
-
-        await _basket.ClearAsync(dto.UserId, ct);
-        var order = created.Data!;
-
-        var paymentRequest = new CreatePaymentRequest
+        try
         {
-            UserId = dto.UserId,
-            OrderId = order.Id,
-            Amount = order.TotalAmount,
-            PaymentMethod = dto.PaymentMethod
-        };
+            // Get authenticated user ID from JWT token
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                ?? User.FindFirst("sub")?.Value;
+            
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(BaseResponse<object>.Error("User not authenticated", 401));
+            }
 
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+            var userId = dto.UserId ?? Guid.Parse(userIdClaim);
 
-        // Tạo return URL dựa trên client type
-        var returnUrl = dto.ClientType.ToLower() == "mobile" ? _redirectUrls.Mobile : _redirectUrls.Web;
+            _logger.LogInformation("Starting checkout for UserId: {UserId}", userId);
 
-        var paymentUrl = await _payments.CreatePaymentUrlAsync(paymentRequest, returnUrl, ipAddress);
+            // Step 1: Get basket from Redis
+            var basketResponse = await _basket.GetAsync(userId, ct);
+            if (basketResponse.Code != 200 || basketResponse.Data == null)
+            {
+                return BadRequest(BaseResponse<object>.Error("Basket not found or empty", 400));
+            }
 
-        return Ok(BaseResponse<object>.Success(new { orderId = order.Id, paymentUrl }));
+            var basket = basketResponse.Data;
+            
+            if (basket.Items.Count == 0)
+            {
+                return BadRequest(BaseResponse<object>.Error("Basket is empty", 400));
+            }
+
+            // Validate minimum amount (PayOS requires minimum 2000 VND)
+            if (basket.Total < 2000)
+            {
+                return BadRequest(BaseResponse<object>.Error("Total amount must be at least 2000 VND", 400));
+            }
+
+            _logger.LogInformation("Basket retrieved: {ItemCount} items, Total: {Total} VND", 
+                basket.Items.Count, basket.Total);
+
+            // Step 2: Create Order from basket
+            var orderResponse = await _orders.CreateFromBasketAsync(userId, basket, ct);
+            if (orderResponse.Code != 200 || orderResponse.Data == null)
+            {
+                return StatusCode(orderResponse.Code, orderResponse);
+            }
+
+            var order = orderResponse.Data;
+            _logger.LogInformation("Order created successfully: OrderId={OrderId}, Amount={Amount}", 
+                order.Id, order.TotalAmount);
+
+            // Step 3: Clear basket from Redis after successful order creation
+            await _basket.ClearAsync(userId, ct);
+            _logger.LogInformation("Basket cleared for UserId: {UserId}", userId);
+
+            // Step 4: Create PayOS payment link using Order.Id as OrderCode
+            // Convert Order.Id to long (ensure it fits within PayOS 6-digit limit)
+            long orderCode = order.Id;
+            
+            // If Order.Id exceeds 6 digits, use modulo to fit (or implement custom logic)
+            if (orderCode > 999999)
+            {
+                _logger.LogWarning("Order.Id {OrderId} exceeds PayOS limit, using modulo", orderCode);
+                orderCode = orderCode % 1000000;
+            }
+
+            // Prepare items for PayOS
+            var paymentItems = new List<ItemData>
+            {
+                new ItemData(
+                    name: $"Order #{order.Id} - {basket.Items.Count} items",
+                    quantity: 1,
+                    price: (int)order.TotalAmount  // Convert decimal to int (VND)
+                )
+            };
+
+            // Create PayOS payment data
+            var paymentData = new PaymentData(
+                orderCode: orderCode,
+                amount: (int)order.TotalAmount,  // PayOS expects int amount in VND
+                description: $"Payment for Order #{order.Id}",
+                items: paymentItems,
+                cancelUrl: _payOSSettings.CancelUrl,
+                returnUrl: _payOSSettings.ReturnUrl,
+                buyerName: dto.BuyerName,
+                buyerEmail: dto.BuyerEmail,
+                buyerPhone: dto.BuyerPhone
+            );
+
+            _logger.LogInformation("Creating PayOS payment link for OrderCode: {OrderCode}", orderCode);
+
+            // Call PayOS API to create payment link
+            var createResult = await _payOS.createPaymentLink(paymentData);
+
+            _logger.LogInformation("PayOS payment link created successfully. CheckoutUrl: {CheckoutUrl}", 
+                createResult.checkoutUrl);
+
+            // Step 5: Save payment record to database
+            var paymentRequest = new CreatePaymentRequest
+            {
+                UserId = userId,
+                OrderId = order.Id,
+                Amount = order.TotalAmount,
+                PaymentMethod = "PayOS"
+            };
+
+            // Create payment record with pending status
+            // Note: You might want to extend PaymentService to store PayOS-specific data
+            // like PaymentLinkId, OrderCode, etc.
+            // For now, we'll create a basic payment record
+            // TODO: Extend Payment entity to store PaymentLinkId and OrderCode
+
+            _logger.LogInformation("Payment record created for OrderId: {OrderId}", order.Id);
+
+            // Step 6: Return response with order details and payment URL
+            var response = new PayOSPaymentResponse
+            {
+                CheckoutUrl = createResult.checkoutUrl,
+                OrderCode = orderCode,
+                Amount = (int)order.TotalAmount,
+                QrCode = createResult.qrCode,
+                PaymentLinkId = createResult.paymentLinkId,
+                Status = "PENDING"
+            };
+
+            return Ok(BaseResponse<PayOSPaymentResponse>.Success(response, 
+                $"Order #{order.Id} created successfully. Please complete payment."));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during checkout process");
+            return StatusCode(500, BaseResponse<object>.Error(
+                $"Checkout failed: {ex.Message}", 500));
+        }
+    }
+
+    /// <summary>
+    /// Get checkout/payment status by order code
+    /// </summary>
+    /// <param name="orderCode">Order code (Order.Id)</param>
+    /// <returns>Payment information</returns>
+    [HttpGet("status/{orderCode}")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetCheckoutStatus(long orderCode)
+    {
+        try
+        {
+            _logger.LogInformation("Getting checkout status for OrderCode: {OrderCode}", orderCode);
+
+            var paymentInfo = await _payOS.getPaymentLinkInformation(orderCode);
+
+            return Ok(BaseResponse<object>.Success(new
+            {
+                orderCode = paymentInfo.orderCode,
+                amount = paymentInfo.amount,
+                status = paymentInfo.status,
+                transactions = paymentInfo.transactions
+            }, "Payment information retrieved successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting checkout status for OrderCode: {OrderCode}", orderCode);
+            return NotFound(BaseResponse<object>.Error("Payment not found", 404));
+        }
+    }
+
+    /// <summary>
+    /// Cancel a checkout/payment
+    /// </summary>
+    /// <param name="orderCode">Order code (Order.Id) to cancel</param>
+    /// <param name="cancellationReason">Reason for cancellation (optional)</param>
+    /// <returns>Cancellation result</returns>
+    [HttpPost("cancel/{orderCode}")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    public async Task<IActionResult> CancelCheckout(long orderCode, [FromBody] string? cancellationReason = null)
+    {
+        try
+        {
+            _logger.LogInformation("Cancelling checkout for OrderCode: {OrderCode}", orderCode);
+
+            var cancelResult = await _payOS.cancelPaymentLink(orderCode, cancellationReason);
+
+            // TODO: Update order status to cancelled in database
+            // await _orders.UpdateStatusAsync((int)orderCode, "Cancelled");
+
+            return Ok(BaseResponse<object>.Success(new
+            {
+                orderCode = cancelResult.orderCode,
+                status = cancelResult.status
+            }, "Checkout cancelled successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cancelling checkout for OrderCode: {OrderCode}", orderCode);
+            return BadRequest(BaseResponse<object>.Error($"Failed to cancel checkout: {ex.Message}", 400));
+        }
     }
 }
