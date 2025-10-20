@@ -42,6 +42,13 @@ namespace Trippio.Data.Service
             _vnPayOptions = vnPayOptions.Value;
         }
 
+        public async Task<BaseResponse<IEnumerable<PaymentDto>>> GetAllAsync()
+        {
+            var payments = await _paymentRepo.GetAllAsync();
+            var data = payments.Select(p => _mapper.Map<PaymentDto>(p));
+            return BaseResponse<IEnumerable<PaymentDto>>.Success(data, "Payments retrieved successfully");
+        }
+
         public async Task<BaseResponse<IEnumerable<PaymentDto>>> GetByUserIdAsync(Guid userId)
         {
             var payments = await _paymentRepo.GetByUserIdAsync(userId);
