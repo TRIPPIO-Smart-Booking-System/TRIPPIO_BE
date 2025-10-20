@@ -1,0 +1,47 @@
+# Ngrok executables (tự động download trong Docker)
+ngrok-docker/ngrok
+ngrok-docker/*.tgz
+ngrok-docker/*.zip
+
+# User-specific ngrok config
+.ngrok2/
+
+# Environment variables - COMMENTED OUT vì cần commit .env cho FE
+# .env
+
+# Docker volumes
+volumes/
+
+# Logs
+*.log
+logs/
+Logs/
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
