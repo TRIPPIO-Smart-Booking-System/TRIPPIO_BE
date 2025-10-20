@@ -6,6 +6,7 @@ namespace Trippio.Core.Services
 {
     public interface IPaymentService
     {
+        Task<BaseResponse<IEnumerable<PaymentDto>>> GetAllAsync();
         Task<BaseResponse<IEnumerable<PaymentDto>>> GetByUserIdAsync(Guid userId);
         Task<BaseResponse<PaymentDto>> GetByIdAsync(Guid id);
         Task<BaseResponse<IEnumerable<PaymentDto>>> GetByOrderIdAsync(int orderId);
