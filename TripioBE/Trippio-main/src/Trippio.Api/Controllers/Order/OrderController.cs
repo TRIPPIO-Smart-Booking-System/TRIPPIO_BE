@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Trippio.Core.Models.Order;
 using Trippio.Core.Services;
 
 namespace Trippio.Api.Controllers
@@ -14,6 +15,13 @@ namespace Trippio.Api.Controllers
         public OrderController(IOrderService orders)
         {
             _orders = orders;
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request)
+        {
+            var result = await _orders.CreateOrderAsync(request);
+            return StatusCode(result.Code, result);
         }
 
         [HttpGet("user/{userId:guid}")]

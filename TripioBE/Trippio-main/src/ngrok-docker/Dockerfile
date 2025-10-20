@@ -1,25 +1,31 @@
-# Multi-stage build để tạo ngrok image nhẹ
-FROM alpine:latest
+# ---- Stage 1: lấy binary ngrok đã build sẵn (không đụng equinox) ----
+FROM ngrok/ngrok:3 AS ngrok_src
 
-# Cài đặt dependencies cần thiết
-RUN apk add --no-cache ca-certificates wget unzip
+# ---- Stage 2: final image siêu nhẹ dựa trên Alpine ----
+FROM alpine:3.20
 
-# Download ngrok binary cho Linux
-RUN wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz && \
-    tar -xzf ngrok-v3-stable-linux-amd64.tgz && \
-    mv ngrok /usr/local/bin/ngrok && \
-    chmod +x /usr/local/bin/ngrok && \
-    rm ngrok-v3-stable-linux-amd64.tgz
+# Chỉ cần CA để TLS hoạt động (không cần wget/curl)
+RUN apk add --no-cache ca-certificates
 
-# Create ngrok config directory
-RUN mkdir -p /root/.ngrok2
+# Copy binary ngrok từ stage 1
+COPY --from=ngrok_src /bin/ngrok /usr/local/bin/ngrok
 
-# Set working directory
-WORKDIR /app
+# (Tùy chọn) Chạy non-root
+RUN adduser -D -H -s /sbin/nologin ngrok && \
+    mkdir -p /home/ngrok && chown -R ngrok:ngrok /home/ngrok
+USER ngrok
+WORKDIR /home/ngrok
 
-# Expose ngrok web interface port
+# Thư mục cấu hình (v3 dùng ~/.config/ngrok/ngrok.yml)
+RUN mkdir -p /home/ngrok/.config/ngrok
+
+# Mở cổng web UI
 EXPOSE 4040
 
-# Entry point
+# Healthcheck đơn giản (tùy chọn)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD nc -z localhost 4040 || exit 0
+
+# Entrypoint/CMD mặc định
 ENTRYPOINT ["/usr/local/bin/ngrok"]
 CMD ["--help"]

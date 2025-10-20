@@ -13,5 +13,6 @@ namespace Trippio.Core.Services
         Task<BaseResponse<BookingDto>> UpdateStatusAsync(Guid id, string status);
         Task<BaseResponse<bool>> CancelBookingAsync(Guid id, Guid userId);
         Task<BaseResponse<decimal>> GetTotalBookingValueAsync(DateTime from, DateTime to);
+        Task<BaseResponse<BookingDto>> CreateAsync(CreateBookingRequest request);
     }
 }

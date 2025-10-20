@@ -14,6 +14,7 @@ namespace Trippio.Core.Repositories
         Task<IEnumerable<Booking>> GetByStatusAsync(string status);
         Task<IEnumerable<Booking>> GetUpcomingBookingsAsync(Guid userId);
         Task<decimal> GetTotalBookingValueAsync(DateTime from, DateTime to);
+        Task AddAsync(Booking entity);
     }
 
     public interface IAccommodationBookingDetailRepository : IRepository<AccommodationBookingDetail, Guid>

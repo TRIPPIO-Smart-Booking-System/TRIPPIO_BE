@@ -9,6 +9,7 @@ namespace Trippio.Core.Models.Order
 
         [Required]
         public List<CreateOrderItemRequest> OrderItems { get; set; } = new();
+        public decimal TotalAmount { get; set; }
     }
 
     public class CreateOrderItemRequest
@@ -42,4 +43,6 @@ namespace Trippio.Core.Models.Order
         public int Quantity { get; set; }
         public decimal Price { get; set; }
     }
+
+
 }

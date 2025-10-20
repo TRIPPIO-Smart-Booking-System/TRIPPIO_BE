@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Trippio.Core.Models.Booking;
 using Trippio.Core.Services;
 
 namespace Trippio.Api.Controllers
@@ -14,6 +15,13 @@ namespace Trippio.Api.Controllers
         public BookingController(IBookingService bookingService)
         {
             _bookingService = bookingService;
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] CreateBookingRequest request)
+        {
+            var result = await _bookingService.CreateAsync(request);
+            return StatusCode(result.Code, result);
         }
 
         [HttpGet("{id:guid}")]

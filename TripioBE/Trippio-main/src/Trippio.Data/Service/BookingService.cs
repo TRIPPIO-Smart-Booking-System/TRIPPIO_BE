@@ -97,5 +97,22 @@ namespace Trippio.Data.Service
             var total = await _bookingRepo.GetTotalBookingValueAsync(from, to);
             return BaseResponse<decimal>.Success(total);
         }
+
+        public async Task<BaseResponse<BookingDto>> CreateAsync(CreateBookingRequest request)
+        {
+            if (!Enum.TryParse<BookingStatus>(request.Status, true, out var statusEnum))
+                return BaseResponse<BookingDto>.Error($"Unknown status '{request.Status}'", 400);
+
+            var entity = _mapper.Map<Booking>(request);
+            entity.Id = Guid.NewGuid();
+            entity.Status = statusEnum.ToString(); 
+            entity.DateCreated = DateTime.UtcNow;
+
+            await _bookingRepo.AddAsync(entity);
+            await _uow.CompleteAsync();
+
+            var dto = _mapper.Map<BookingDto>(entity);
+            return BaseResponse<BookingDto>.Success(dto, "Booking created");
+        }
     }
 }

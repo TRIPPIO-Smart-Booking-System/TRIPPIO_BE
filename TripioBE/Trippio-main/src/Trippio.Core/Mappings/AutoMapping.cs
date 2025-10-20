@@ -52,7 +52,10 @@ namespace Trippio.Core.Mappings
 
             // Booking mappings
             CreateMap<Booking, BookingDto>();
-
+            CreateMap<CreateBookingRequest, Booking>()
+                .ForMember(d => d.Status, opt => opt.Ignore())
+                .ForMember(d => d.DateCreated, opt => opt.Ignore())
+                .ForMember(d => d.ModifiedDate, opt => opt.Ignore());
             // ExtraService mappings
             CreateMap<ExtraService, ExtraServiceDto>();
             CreateMap<CreateExtraServiceDto, ExtraService>()

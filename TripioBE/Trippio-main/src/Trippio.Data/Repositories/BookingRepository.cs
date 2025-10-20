@@ -114,5 +114,10 @@ namespace Trippio.Data.Repositories
                 .OrderByDescending(b => b.BookingDate)
                 .ToListAsync();
         }
-    }
+
+        public async Task AddAsync(Booking entity)
+        {
+            await _context.Bookings.AddAsync(entity);
+        }
+        }
 }

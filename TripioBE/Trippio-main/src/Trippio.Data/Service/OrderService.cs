@@ -152,7 +152,29 @@ namespace Trippio.Data.Service
             var dto = _mapper.Map<OrderDto>(order);
             return BaseResponse<OrderDto>.Success(dto, "Order created from basket");
         }
-    }
+
+        public async Task<BaseResponse<OrderDto>> CreateOrderAsync(CreateOrderRequest request)
+        {
+            var order = new Order
+            {
+                UserId = request.UserId,
+                OrderDate = DateTime.UtcNow,
+                TotalAmount = request.TotalAmount,
+                Status = OrderStatus.Pending,
+                DateCreated = DateTime.UtcNow,
+                OrderItems = request.OrderItems.Select(oi => new OrderItem
+                {
+                    BookingId = oi.BookingId,
+                    Quantity = oi.Quantity,
+                    Price = oi.Price
+                }).ToList()
+            };
+            await _orderRepo.Add(order);
+            await _uow.CompleteAsync();
+            var dto = _mapper.Map<OrderDto>(order);
+            return BaseResponse<OrderDto>.Success(dto, "Order created");
+        }
+        }
 
 
 }
