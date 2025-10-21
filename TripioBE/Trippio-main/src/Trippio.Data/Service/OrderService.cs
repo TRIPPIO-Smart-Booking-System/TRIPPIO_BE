@@ -179,8 +179,6 @@ namespace Trippio.Data.Service
 {
     if (request.OrderItems == null || request.OrderItems.Count == 0)
         return BaseResponse<OrderDto>.Error("OrderItems is empty.", 400);
-
-            // Kiểm tra Booking tồn tại – tránh lỗi FK
             var bookingIds = request.OrderItems.Select(i => i.BookingId).Distinct().ToList();
 
             var existed = await _db.Bookings
@@ -192,8 +190,6 @@ namespace Trippio.Data.Service
             if (missing.Any())
                 return BaseResponse<OrderDto>.Error(
                     $"Invalid BookingId(s): {string.Join(", ", missing)}", 400);
-
-            // Tính tổng ở server
             var total = request.OrderItems.Sum(i => i.Price * i.Quantity);
 
     var order = new OrderEntity
@@ -214,7 +210,6 @@ namespace Trippio.Data.Service
     await _orderRepo.AddAsync(order);
     await _uow.CompleteAsync();
 
-    // load lại để map BookingName
     var loaded = await _orderRepo.Query()
         .Where(o => o.Id == order.Id)
         .Include(o => o.OrderItems).ThenInclude(oi => oi.Booking)
