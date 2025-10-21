@@ -16,7 +16,11 @@ namespace Trippio.Core.Models.Payment
 
         [Required]
         [MaxLength(100)]
-        public required string PaymentMethod { get; set; } // "CreditCard", "DebitCard", "PayPal", "BankTransfer"
+        public required string PaymentMethod { get; set; } // "CreditCard", "DebitCard", "PayPal", "BankTransfer", "PayOS"
+
+        // PayOS specific fields
+        public string? PaymentLinkId { get; set; }
+        public long? OrderCode { get; set; }
     }
 
     public class PaymentDto
@@ -29,5 +33,14 @@ namespace Trippio.Core.Models.Payment
         public string PaymentMethod { get; set; } = string.Empty;
         public DateTime PaidAt { get; set; }
         public string Status { get; set; } = string.Empty;
+        public string? PaymentLinkId { get; set; }
+        public long? OrderCode { get; set; }
+    }
+
+    public class UpdatePaymentStatusRequest
+    {
+        public long OrderCode { get; set; }
+        public string Status { get; set; } = string.Empty; // "PAID", "FAILED", "CANCELLED"
+        public string? TransactionRef { get; set; }
     }
 }

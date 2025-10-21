@@ -15,5 +15,7 @@ namespace Trippio.Core.Services
         Task<BaseResponse<PaymentDto>> UpdatePaymentStatusAsync(Guid id, string status);
         Task<BaseResponse<decimal>> GetTotalPaymentAmountAsync(DateTime from, DateTime to);
         Task<string> CreatePaymentUrlAsync(CreatePaymentRequest request, string returnUrl, string ipAddress);
+        Task<BaseResponse<PaymentDto>> CreateAsync(CreatePaymentRequest request, CancellationToken ct = default);
+        Task<BaseResponse<PaymentDto>> UpdateStatusByOrderCodeAsync(long orderCode, string status, CancellationToken ct = default);
     }
 }

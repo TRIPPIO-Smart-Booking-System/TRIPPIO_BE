@@ -8,7 +8,6 @@ using Trippio.Core.Repositories;
 using Trippio.Core.SeedWorks;
 using Trippio.Core.Services;
 using Trippio.Data.Repositories;
-using Trippio.Core.Repositories;
 using Trippio.Core.ConfigOptions;
 using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
@@ -232,6 +231,107 @@ namespace Trippio.Data.Service
             var paymentUrl = $"{_vnPayOptions.BaseUrl}?{queryString}&vnp_SecureHash={vnpSecureHash}";
 
             return paymentUrl;
+        }
+
+        public async Task<BaseResponse<PaymentDto>> CreateAsync(CreatePaymentRequest request, CancellationToken ct = default)
+        {
+            try
+            {
+                var payment = new Payment
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = request.UserId,
+                    OrderId = request.OrderId,
+                    BookingId = request.BookingId,
+                    Amount = request.Amount,
+                    PaymentMethod = request.PaymentMethod,
+                    Status = PaymentStatus.Pending,
+                    PaidAt = DateTime.UtcNow,
+                    DateCreated = DateTime.UtcNow,
+                    PaymentLinkId = request.PaymentLinkId,
+                    OrderCode = request.OrderCode
+                };
+
+                await _paymentRepo.Add(payment);
+                await _uow.CompleteAsync();
+
+                return BaseResponse<PaymentDto>.Success(_mapper.Map<PaymentDto>(payment), "Payment record created successfully");
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<PaymentDto>.Error($"Failed to create payment: {ex.Message}", 500);
+            }
+        }
+
+        public async Task<BaseResponse<PaymentDto>> UpdateStatusByOrderCodeAsync(long orderCode, string status, CancellationToken ct = default)
+        {
+            try
+            {
+                if (!Enum.TryParse(status, true, out PaymentStatus parsedStatus))
+                    return BaseResponse<PaymentDto>.Error($"Unknown status: {status}", 400);
+
+                // Find payment by OrderCode
+                var allPayments = await _paymentRepo.GetAllAsync();
+                var payment = allPayments.FirstOrDefault(p => p.OrderCode == orderCode);
+
+                if (payment == null)
+                    return BaseResponse<PaymentDto>.NotFound($"Payment not found for OrderCode: {orderCode}");
+
+                await _uow.BeginTransactionAsync();
+                try
+                {
+                    payment.Status = parsedStatus;
+                    payment.ModifiedDate = DateTime.UtcNow;
+                    
+                    if (parsedStatus == PaymentStatus.Paid)
+                    {
+                        payment.PaidAt = DateTime.UtcNow;
+                    }
+
+                    // Update related Order status
+                    if (payment.OrderId.HasValue)
+                    {
+                        var order = await _orderRepo.GetByIdAsync(payment.OrderId.Value);
+                        if (order != null)
+                        {
+                            if (parsedStatus == PaymentStatus.Paid)
+                                order.Status = OrderStatus.Confirmed;
+                            else if (parsedStatus is PaymentStatus.Failed or PaymentStatus.Refunded)
+                                order.Status = OrderStatus.Cancelled;
+                        }
+                    }
+
+                    // Update related Booking status
+                    if (payment.BookingId.HasValue)
+                    {
+                        var booking = await _bookingRepo.GetWithDetailsAsync(payment.BookingId.Value)
+                                      ?? await _bookingRepo.GetByIdAsync(payment.BookingId.Value);
+                        if (booking != null)
+                        {
+                            if (parsedStatus == PaymentStatus.Paid)
+                                booking.Status = "Confirmed";
+                            else if (parsedStatus is PaymentStatus.Failed or PaymentStatus.Refunded)
+                                booking.Status = "Cancelled";
+
+                            booking.ModifiedDate = DateTime.UtcNow;
+                        }
+                    }
+
+                    await _uow.CompleteAsync();
+                    await _uow.CommitTransactionAsync();
+
+                    return BaseResponse<PaymentDto>.Success(_mapper.Map<PaymentDto>(payment), "Payment status updated successfully");
+                }
+                catch
+                {
+                    await _uow.RollbackTransactionAsync();
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<PaymentDto>.Error($"Failed to update payment status: {ex.Message}", 500);
+            }
         }
     }
 }

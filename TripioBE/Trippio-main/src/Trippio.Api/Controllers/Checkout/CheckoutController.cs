@@ -129,16 +129,24 @@ public class CheckoutController : ControllerBase
             await _basket.ClearAsync(userId, ct);
             _logger.LogInformation("Basket cleared for UserId: {UserId}", userId);
 
-            // Step 4: Create PayOS payment link using Order.Id as OrderCode
-            // Convert Order.Id to long (ensure it fits within PayOS 6-digit limit)
-            long orderCode = order.Id;
+            // Step 4: Create PayOS payment link using unique OrderCode
+            // Generate unique orderCode (6 digits) to avoid PayOS conflicts
+            // Use timestamp + random to ensure uniqueness across multiple checkouts
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var random = new Random().Next(100, 999); // 3 digits
+            long orderCode = (timestamp % 1000000) * 1000 + random; // Combine to 6 digits
             
-            // If Order.Id exceeds 6 digits, use modulo to fit (or implement custom logic)
+            // Ensure orderCode is within PayOS limits (6 digits)
             if (orderCode > 999999)
             {
-                _logger.LogWarning("Order.Id {OrderId} exceeds PayOS limit, using modulo", orderCode);
                 orderCode = orderCode % 1000000;
             }
+            if (orderCode < 100000)
+            {
+                orderCode += 100000; // Ensure minimum 6 digits
+            }
+
+            _logger.LogInformation("Generated unique OrderCode: {OrderCode} for OrderId: {OrderId}", orderCode, order.Id);
 
             // Prepare items for PayOS
             var paymentItems = new List<ItemData>
@@ -165,8 +173,44 @@ public class CheckoutController : ControllerBase
 
             _logger.LogInformation("Creating PayOS payment link for OrderCode: {OrderCode}", orderCode);
 
-            // Call PayOS API to create payment link
-            var createResult = await _payOS.createPaymentLink(paymentData);
+            // Step 4b: Create PayOS payment link with retry logic for unique OrderCode
+            Net.payOS.Types.CreatePaymentResult createResult = null!;
+            int retryCount = 0;
+            const int maxRetries = 3;
+
+            do
+            {
+                try
+                {
+                    // Call PayOS API to create payment link
+                    createResult = await _payOS.createPaymentLink(paymentData);
+                    break; // Success, exit retry loop
+                }
+                catch (Exception ex)
+                {
+                    retryCount++;
+                    if (retryCount >= maxRetries)
+                    {
+                        _logger.LogError(ex, "Failed to create PayOS payment after {MaxRetries} attempts", maxRetries);
+                        throw;
+                    }
+                    
+                    // Generate new orderCode for retry
+                    var newTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    var newRandom = new Random().Next(100, 999);
+                    orderCode = (newTimestamp % 1000000) * 1000 + newRandom;
+                    if (orderCode > 999999) orderCode = orderCode % 1000000;
+                    if (orderCode < 100000) orderCode += 100000;
+                    
+                    _logger.LogWarning(ex, "PayOS payment creation failed (attempt {Attempt}), retrying with new OrderCode: {NewOrderCode}", 
+                        retryCount, orderCode);
+                    
+                    // Update paymentData with new orderCode
+                    paymentData = paymentData with { orderCode = orderCode };
+                    
+                    await Task.Delay(100); // Small delay before retry
+                }
+            } while (retryCount < maxRetries);
 
             _logger.LogInformation("PayOS payment link created successfully. CheckoutUrl: {CheckoutUrl}", 
                 createResult.checkoutUrl);
@@ -177,16 +221,23 @@ public class CheckoutController : ControllerBase
                 UserId = userId,
                 OrderId = order.Id,
                 Amount = order.TotalAmount,
-                PaymentMethod = "PayOS"
+                PaymentMethod = "PayOS",
+                PaymentLinkId = createResult.paymentLinkId,
+                OrderCode = orderCode  // Use the unique orderCode generated above
             };
 
-            // Create payment record with pending status
-            // Note: You might want to extend PaymentService to store PayOS-specific data
-            // like PaymentLinkId, OrderCode, etc.
-            // For now, we'll create a basic payment record
-            // TODO: Extend Payment entity to store PaymentLinkId and OrderCode
-
-            _logger.LogInformation("Payment record created for OrderId: {OrderId}", order.Id);
+            var paymentResponse = await _payments.CreateAsync(paymentRequest, ct);
+            if (paymentResponse.Code != 200)
+            {
+                _logger.LogError("Failed to save payment record for OrderId: {OrderId}. Error: {Error}", 
+                    order.Id, paymentResponse.Message);
+                // Continue anyway - payment link is already created
+            }
+            else
+            {
+                _logger.LogInformation("Payment record saved successfully for OrderId: {OrderId}, PaymentId: {PaymentId}", 
+                    order.Id, paymentResponse.Data?.Id);
+            }
 
             // Step 6: Return response with order details and payment URL
             var response = new PayOSPaymentResponse
