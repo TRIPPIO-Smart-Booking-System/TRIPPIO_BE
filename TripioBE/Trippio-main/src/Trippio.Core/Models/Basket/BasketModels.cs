@@ -6,7 +6,10 @@ namespace Trippio.Core.Models.Basket
         string ProductId,
         int Quantity,
         decimal Price
-    );
+    )
+    {
+        public Guid BookingId { get; set; }
+    }
 
     public class Basket
     {

@@ -24,6 +24,13 @@ namespace Trippio.Api.Controllers
             return StatusCode(result.Code, result);
         }
 
+        [HttpPost("from-basket/{userId:guid}")]
+        public async Task<IActionResult> CreateFromBasket(Guid userId)
+        {
+            var result = await _orders.CreateFromBasketAsync(userId, basket: null);
+            return StatusCode(result.Code, result);
+        }
+
         [HttpGet("user/{userId:guid}")]
         public async Task<IActionResult> GetByUser(Guid userId)
         {

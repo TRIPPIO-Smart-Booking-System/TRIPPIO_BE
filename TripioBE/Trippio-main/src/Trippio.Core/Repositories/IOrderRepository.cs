@@ -7,6 +7,7 @@ namespace Trippio.Data.Repositories
     {
         IQueryable<Order> Query();                 
         Task<Order?> FindByIdAsync(int id);        
-        void Update(Order entity);                 
+        void Update(Order entity);
+        Task AddAsync(Order order);
     }
 }

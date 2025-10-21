@@ -5,22 +5,29 @@ using Trippio.Core.Domain.Entities;
 using Trippio.Core.Models.Basket;
 using Trippio.Core.Models.Common;
 using Trippio.Core.Models.Order;
+using Trippio.Core.Repositories;
 using Trippio.Core.SeedWorks;
 using Trippio.Core.Services;
 using Trippio.Data.Repositories;
 using Trippio.Data.SeedWorks;
+using OrderEntity = Trippio.Core.Domain.Entities.Order;
+using OrderItemEntity = Trippio.Core.Domain.Entities.OrderItem;
 
 namespace Trippio.Data.Service
 {
     public class OrderService : IOrderService
     {
         private readonly IOrderRepository _orderRepo;
+        private readonly IBookingRepository _bookingRepo;
+        private readonly TrippioDbContext _db;
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
 
-        public OrderService(IOrderRepository orderRepo, IUnitOfWork uow, IMapper mapper)
+        public OrderService(IOrderRepository orderRepo, TrippioDbContext db, IBookingRepository bookingRepo, IUnitOfWork uow, IMapper mapper)
         {
             _orderRepo = orderRepo;
+            _bookingRepo = bookingRepo;
+            _db = db;
             _uow = uow;
             _mapper = mapper;
         }
@@ -28,10 +35,12 @@ namespace Trippio.Data.Service
         public async Task<BaseResponse<IEnumerable<OrderDto>>> GetByUserIdAsync(Guid userId)
         {
             var data = await _orderRepo.Query()
-                .Where(o => o.UserId == userId)
-                .OrderByDescending(o => o.OrderDate)
-                .ProjectTo<OrderDto>(_mapper.ConfigurationProvider)
-                .ToListAsync();
+        .Where(o => o.UserId == userId)
+        .Include(o => o.OrderItems)
+            .ThenInclude(oi => oi.Booking)
+        .OrderByDescending(o => o.OrderDate)
+        .ProjectTo<OrderDto>(_mapper.ConfigurationProvider)
+        .ToListAsync();
 
             return BaseResponse<IEnumerable<OrderDto>>.Success(data);
         }
@@ -39,9 +48,9 @@ namespace Trippio.Data.Service
         public async Task<BaseResponse<OrderDto>> GetByIdAsync(int id)
         {
             var entity = await _orderRepo.Query()
-                .Include(o => o.OrderItems)
-                .Include(o => o.Payments)
-                .FirstOrDefaultAsync(o => o.Id == id);
+        .Include(o => o.OrderItems).ThenInclude(oi => oi.Booking)
+        .Include(o => o.Payments)
+        .FirstOrDefaultAsync(o => o.Id == id);
 
             if (entity is null)
                 return BaseResponse<OrderDto>.NotFound($"Order #{id} not found");
@@ -132,48 +141,90 @@ namespace Trippio.Data.Service
         private static bool TryParseStatus(string status, out OrderStatus parsed)
             => Enum.TryParse(status?.Trim(), ignoreCase: true, out parsed);
 
-        public async Task<BaseResponse<OrderDto>> CreateFromBasketAsync(Guid userId, Basket basket, CancellationToken ct = default)
+        public async Task<BaseResponse<OrderDto>> CreateFromBasketAsync(
+    Guid userId, Basket basket, CancellationToken ct = default)
         {
             if (basket == null || basket.Items.Count == 0)
                 return BaseResponse<OrderDto>.Error("Basket is empty", 400);
+            var total = basket.Items.Sum(i => i.Price * i.Quantity);
 
-            var order = new Order
+            var order = new OrderEntity
             {
                 UserId = userId,
                 OrderDate = DateTime.UtcNow,
-                TotalAmount = basket.Total,
                 Status = OrderStatus.Pending,
-                DateCreated = DateTime.UtcNow
+                DateCreated = DateTime.UtcNow,
+                TotalAmount = total,
+                OrderItems = basket.Items.Select(i => new OrderItemEntity
+                {
+                    BookingId = i.BookingId,  
+                    Quantity = i.Quantity,
+                    Price = i.Price
+                }).ToList()
             };
 
-            await _orderRepo.Add(order);         
-            await _uow.CompleteAsync();         
+            await _orderRepo.AddAsync(order);
+            await _uow.CompleteAsync();
 
-            var dto = _mapper.Map<OrderDto>(order);
-            return BaseResponse<OrderDto>.Success(dto, "Order created from basket");
+            var loaded = await _orderRepo.Query()
+                .Where(o => o.Id == order.Id)
+                .Include(o => o.OrderItems).ThenInclude(oi => oi.Booking)
+                .SingleAsync();
+
+            return BaseResponse<OrderDto>.Success(
+                _mapper.Map<OrderDto>(loaded), "Order created from basket");
         }
 
         public async Task<BaseResponse<OrderDto>> CreateOrderAsync(CreateOrderRequest request)
+{
+    if (request.OrderItems == null || request.OrderItems.Count == 0)
+        return BaseResponse<OrderDto>.Error("OrderItems is empty.", 400);
+
+            // Kiểm tra Booking tồn tại – tránh lỗi FK
+            var bookingIds = request.OrderItems.Select(i => i.BookingId).Distinct().ToList();
+
+            var existed = await _db.Bookings
+                .Where(b => bookingIds.Contains(b.Id))
+                .Select(b => b.Id)
+                .ToListAsync();
+
+            var missing = bookingIds.Except(existed).ToList();
+            if (missing.Any())
+                return BaseResponse<OrderDto>.Error(
+                    $"Invalid BookingId(s): {string.Join(", ", missing)}", 400);
+
+            // Tính tổng ở server
+            var total = request.OrderItems.Sum(i => i.Price * i.Quantity);
+
+    var order = new OrderEntity
+    {
+        UserId      = request.UserId,
+        OrderDate   = DateTime.UtcNow,
+        Status      = OrderStatus.Pending,
+        DateCreated = DateTime.UtcNow,
+        TotalAmount = total,
+        OrderItems  = request.OrderItems.Select(oi => new OrderItemEntity
         {
-            var order = new Order
-            {
-                UserId = request.UserId,
-                OrderDate = DateTime.UtcNow,
-                TotalAmount = request.TotalAmount,
-                Status = OrderStatus.Pending,
-                DateCreated = DateTime.UtcNow,
-                OrderItems = request.OrderItems.Select(oi => new OrderItem
-                {
-                    BookingId = oi.BookingId,
-                    Quantity = oi.Quantity,
-                    Price = oi.Price
-                }).ToList()
-            };
-            await _orderRepo.Add(order);
-            await _uow.CompleteAsync();
-            var dto = _mapper.Map<OrderDto>(order);
-            return BaseResponse<OrderDto>.Success(dto, "Order created");
-        }
+            BookingId = oi.BookingId,
+            Quantity  = oi.Quantity,
+            Price     = oi.Price
+        }).ToList()
+    };
+
+    await _orderRepo.AddAsync(order);
+    await _uow.CompleteAsync();
+
+    // load lại để map BookingName
+    var loaded = await _orderRepo.Query()
+        .Where(o => o.Id == order.Id)
+        .Include(o => o.OrderItems).ThenInclude(oi => oi.Booking)
+        .SingleAsync();
+
+    return BaseResponse<OrderDto>.Success(
+        _mapper.Map<OrderDto>(loaded), "Order created");
+}
+
+
         }
 
 
