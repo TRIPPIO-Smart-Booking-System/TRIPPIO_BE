@@ -339,29 +339,36 @@ namespace Trippio.Api.Controllers.Payment
                     _logger.LogInformation("Payment SUCCESSFUL for OrderCode: {OrderCode}, Amount: {Amount}", 
                         orderCode, amount);
 
-                    // TODO: Update payment status in database
-                    // TODO: Update user balance if applicable
-                    // TODO: Send confirmation email to user
-                    // Example:
-                    // await _paymentService.UpdatePaymentStatusAsync(
-                    //     orderCode.ToString(), 
-                    //     "PAID"
-                    // );
-                    // await _paymentService.UpdateUserBalanceAsync(
-                    //     userId, 
-                    //     amount
-                    // );
+                    // Update payment status in database
+                    var updateResult = await _paymentService.UpdateStatusByOrderCodeAsync(orderCode, "Paid");
+                    
+                    if (updateResult.Code == 200)
+                    {
+                        _logger.LogInformation("Payment status updated to PAID for OrderCode: {OrderCode}", orderCode);
+                    }
+                    else
+                    {
+                        _logger.LogError("Failed to update payment status for OrderCode: {OrderCode}. Error: {Error}", 
+                            orderCode, updateResult.Message);
+                    }
                 }
                 else
                 {
                     _logger.LogWarning("Payment FAILED or CANCELLED for OrderCode: {OrderCode}, Code: {Code}, Desc: {Desc}",
                         orderCode, code, desc);
 
-                    // TODO: Update payment status as failed/cancelled
-                    // await _paymentService.UpdatePaymentStatusAsync(
-                    //     orderCode.ToString(), 
-                    //     "FAILED"
-                    // );
+                    // Update payment status as failed
+                    var updateResult = await _paymentService.UpdateStatusByOrderCodeAsync(orderCode, "Failed");
+                    
+                    if (updateResult.Code == 200)
+                    {
+                        _logger.LogInformation("Payment status updated to FAILED for OrderCode: {OrderCode}", orderCode);
+                    }
+                    else
+                    {
+                        _logger.LogError("Failed to update payment status for OrderCode: {OrderCode}. Error: {Error}", 
+                            orderCode, updateResult.Message);
+                    }
                 }
 
                 // Log full webhook data for debugging

@@ -34,6 +34,12 @@ namespace Trippio.Core.Domain.Entities
         public DateTime DateCreated { get; set; }
         public DateTime? ModifiedDate { get; set; }
 
+        // PayOS specific fields
+        [MaxLength(100)]
+        public string? PaymentLinkId { get; set; }
+        
+        public long? OrderCode { get; set; }
+
         // Navigation Properties
         [ForeignKey("UserId")]
         public virtual AppUser User { get; set; } = null!;

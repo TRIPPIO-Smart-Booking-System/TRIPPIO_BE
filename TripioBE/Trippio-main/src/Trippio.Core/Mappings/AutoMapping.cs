@@ -82,7 +82,7 @@ namespace Trippio.Core.Mappings
             CreateMap<Order, OrderDto>()
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()));
             CreateMap<OrderItem, OrderItemDto>()
-                .ForMember(dest => dest.BookingName, opt => opt.MapFrom(src => src.Booking.BookingType));
+                .ForMember(dest => dest.BookingName, opt => opt.MapFrom(src => src.Booking != null ? src.Booking.BookingType : "N/A"));
 
             // Payment mappings
             CreateMap<Payment, PaymentDto>();
