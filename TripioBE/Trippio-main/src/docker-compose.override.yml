@@ -88,8 +88,7 @@ services:
     ports:
       - "4040:4040"  # Ngrok web interface
     depends_on:
-      trippio.api:
-        condition: service_healthy
+      - trippio.api
     networks:
       - trippio_network
     restart: unless-stopped
