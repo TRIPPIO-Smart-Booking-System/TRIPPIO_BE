@@ -312,25 +312,34 @@ namespace Trippio.Api.Controllers.Payment
         [AllowAnonymous]  // PayOS server calls this, no auth needed
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
-        public async Task<IActionResult> PayOSWebhook([FromBody] dynamic webhookData)
+        public async Task<IActionResult> PayOSWebhook([FromBody] PayOSWebhookRequest webhookData)
         {
             try
             {
-                // Parse webhook data
-                long orderCode = webhookData.data.orderCode;
-                int amount = webhookData.data.amount;
-                string code = webhookData.data.code;
-                string desc = webhookData.data.desc;
-                string reference = webhookData.data.reference ?? "";
-                string transactionDateTime = webhookData.data.transactionDateTime ?? "";
-                string description = webhookData.data.description ?? "";
+                if (webhookData?.Data == null)
+                {
+                    _logger.LogWarning("Received empty webhook data from PayOS");
+                    return BadRequest(new { success = false, message = "Invalid webhook data" });
+                }
 
-                _logger.LogInformation("Received PayOS webhook for OrderCode: {OrderCode}", orderCode);
+                var payload = webhookData.Data;
+                long orderCode = payload.OrderCode;
+                int amount = payload.Amount;
+                string code = payload.Code;
+                string desc = payload.Desc;
+                string reference = payload.Reference ?? "";
+                string transactionDateTime = payload.TransactionDateTime ?? "";
+                string description = payload.Description ?? "";
 
-                // Note: Signature verification is complex with dynamic type
-                // For production, consider using strongly typed model or manual JSON parsing
-                
-                _logger.LogInformation("Processing payment status: {Status}", code);
+                _logger.LogInformation("Received PayOS webhook for OrderCode: {OrderCode}, Code: {Code}, Amount: {Amount}",
+                    orderCode, code, amount);
+
+                // Validate orderCode
+                if (orderCode <= 0)
+                {
+                    _logger.LogWarning("Invalid OrderCode in webhook: {OrderCode}", orderCode);
+                    return BadRequest(new { success = false, message = "Invalid order code" });
+                }
 
                 // Process webhook based on status code
                 // Code "00" means payment successful
