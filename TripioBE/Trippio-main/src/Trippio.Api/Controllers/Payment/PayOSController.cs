@@ -312,25 +312,34 @@ namespace Trippio.Api.Controllers.Payment
         [AllowAnonymous]  // PayOS server calls this, no auth needed
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
-        public async Task<IActionResult> PayOSWebhook([FromBody] dynamic webhookData)
+        public async Task<IActionResult> PayOSWebhook([FromBody] PayOSWebhookRequest webhookData)
         {
             try
             {
-                // Parse webhook data
-                long orderCode = webhookData.data.orderCode;
-                int amount = webhookData.data.amount;
-                string code = webhookData.data.code;
-                string desc = webhookData.data.desc;
-                string reference = webhookData.data.reference ?? "";
-                string transactionDateTime = webhookData.data.transactionDateTime ?? "";
-                string description = webhookData.data.description ?? "";
+                if (webhookData?.Data == null)
+                {
+                    _logger.LogWarning("Received empty webhook data from PayOS");
+                    return BadRequest(new { success = false, message = "Invalid webhook data" });
+                }
 
-                _logger.LogInformation("Received PayOS webhook for OrderCode: {OrderCode}", orderCode);
+                var payload = webhookData.Data;
+                long orderCode = payload.OrderCode;
+                int amount = payload.Amount;
+                string code = payload.Code;
+                string desc = payload.Desc;
+                string reference = payload.Reference ?? "";
+                string transactionDateTime = payload.TransactionDateTime ?? "";
+                string description = payload.Description ?? "";
 
-                // Note: Signature verification is complex with dynamic type
-                // For production, consider using strongly typed model or manual JSON parsing
-                
-                _logger.LogInformation("Processing payment status: {Status}", code);
+                _logger.LogInformation("Received PayOS webhook for OrderCode: {OrderCode}, Code: {Code}, Amount: {Amount}",
+                    orderCode, code, amount);
+
+                // Validate orderCode
+                if (orderCode <= 0)
+                {
+                    _logger.LogWarning("Invalid OrderCode in webhook: {OrderCode}", orderCode);
+                    return BadRequest(new { success = false, message = "Invalid order code" });
+                }
 
                 // Process webhook based on status code
                 // Code "00" means payment successful
@@ -390,6 +399,58 @@ namespace Trippio.Api.Controllers.Payment
                 { 
                     success = false, 
                     message = "Webhook processing failed but acknowledged" 
+                });
+            }
+        }
+
+        /// <summary>
+        /// Test webhook manually - Simulate PayOS payment success
+        /// Use this to manually update payment status when webhook fails
+        /// </summary>
+        /// <param name="orderCode">Order code to mark as paid</param>
+        /// <returns>Update result</returns>
+        [HttpPost("test-webhook/{orderCode}")]
+        [Authorize] // Protect this endpoint - only authenticated users can call
+        [ProducesResponseType(200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> TestWebhookManually(long orderCode)
+        {
+            try
+            {
+                _logger.LogInformation("Manual webhook test for OrderCode: {OrderCode}", orderCode);
+
+                // Simulate successful payment webhook
+                var updateResult = await _paymentService.UpdateStatusByOrderCodeAsync(orderCode, "Paid");
+
+                if (updateResult.Code == 200)
+                {
+                    _logger.LogInformation("Payment status manually updated to PAID for OrderCode: {OrderCode}", orderCode);
+                    return Ok(new
+                    {
+                        success = true,
+                        message = $"Payment for OrderCode {orderCode} marked as PAID",
+                        data = updateResult.Data
+                    });
+                }
+                else
+                {
+                    _logger.LogError("Failed to update payment status for OrderCode: {OrderCode}. Error: {Error}",
+                        orderCode, updateResult.Message);
+                    return StatusCode(updateResult.Code, new
+                    {
+                        success = false,
+                        message = updateResult.Message
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in manual webhook test for OrderCode: {OrderCode}", orderCode);
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Manual webhook test failed",
+                    error = ex.Message
                 });
             }
         }
