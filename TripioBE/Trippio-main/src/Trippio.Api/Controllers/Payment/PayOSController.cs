@@ -395,6 +395,58 @@ namespace Trippio.Api.Controllers.Payment
         }
 
         /// <summary>
+        /// Test webhook manually - Simulate PayOS payment success
+        /// Use this to manually update payment status when webhook fails
+        /// </summary>
+        /// <param name="orderCode">Order code to mark as paid</param>
+        /// <returns>Update result</returns>
+        [HttpPost("test-webhook/{orderCode}")]
+        [Authorize] // Protect this endpoint - only authenticated users can call
+        [ProducesResponseType(200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> TestWebhookManually(long orderCode)
+        {
+            try
+            {
+                _logger.LogInformation("Manual webhook test for OrderCode: {OrderCode}", orderCode);
+
+                // Simulate successful payment webhook
+                var updateResult = await _paymentService.UpdateStatusByOrderCodeAsync(orderCode, "Paid");
+
+                if (updateResult.Code == 200)
+                {
+                    _logger.LogInformation("Payment status manually updated to PAID for OrderCode: {OrderCode}", orderCode);
+                    return Ok(new
+                    {
+                        success = true,
+                        message = $"Payment for OrderCode {orderCode} marked as PAID",
+                        data = updateResult.Data
+                    });
+                }
+                else
+                {
+                    _logger.LogError("Failed to update payment status for OrderCode: {OrderCode}. Error: {Error}",
+                        orderCode, updateResult.Message);
+                    return StatusCode(updateResult.Code, new
+                    {
+                        success = false,
+                        message = updateResult.Message
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in manual webhook test for OrderCode: {OrderCode}", orderCode);
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Manual webhook test failed",
+                    error = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
         /// Confirm webhook URL (for testing during PayOS setup)
         /// </summary>
         [HttpGet("payos-callback")]
