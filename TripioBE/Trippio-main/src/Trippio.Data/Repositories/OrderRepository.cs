@@ -27,5 +27,10 @@ namespace Trippio.Data.Repositories
         {
             _context.Set<Order>().Update(entity);
         }
+
+        public async Task AddAsync(Order order)
+        {
+            await _context.Set<Order>().AddAsync(order);
+        }
     }
 }
