@@ -121,7 +121,7 @@ namespace Trippio.Data
                     Email = "Trihoang1510@gmail.com",
                     UserName = "tristaff",
                     PhoneNumber = "0123456789",
-                    IsActive = false,
+                    IsActive = true,
                     DateCreated = DateTime.UtcNow,
                     Dob = new DateTime(1990, 1, 1),
                     IsEmailVerified = false,
