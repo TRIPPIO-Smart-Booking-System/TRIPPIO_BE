@@ -293,10 +293,5 @@ internal class Program
             Log.CloseAndFlush();
         }
     }
-
-    /// <summary>
-    /// Fake catalog để dev/test: trả giá cố định theo loại.
-    /// Thay bằng triển khai thật (gọi Room/Show/Flight repo hoặc service của bạn).
-    /// </summary>
     
 }
