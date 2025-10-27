@@ -7,15 +7,12 @@ namespace Trippio.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] 
-    public class BasketController : ControllerBase
+    [Authorize]
+    public sealed class BasketController : ControllerBase
     {
         private readonly IBasketService _basket;
 
-        public BasketController(IBasketService basket)
-        {
-            _basket = basket;
-        }
+        public BasketController(IBasketService basket) => _basket = basket;
 
         [HttpGet("{userId:guid}")]
         public async Task<IActionResult> Get(Guid userId, CancellationToken ct)
@@ -38,13 +35,19 @@ namespace Trippio.Api.Controllers
             return StatusCode(result.Code, result);
         }
 
-        [HttpDelete("{userId:guid}/items/{productId}")]
-        public async Task<IActionResult> Remove(Guid userId, string productId, CancellationToken ct)
+
+        [HttpDelete("{userId:guid}/items/{bookingId:guid}")]
+        public async Task<IActionResult> RemoveByPath(Guid userId, Guid bookingId, CancellationToken ct)
         {
-            var result = await _basket.RemoveItemAsync(userId, productId, ct);
+            var result = await _basket.RemoveItemAsync(userId, bookingId, ct);
             return StatusCode(result.Code, result);
         }
-
+        [HttpDelete("{userId:guid}/items")]
+        public async Task<IActionResult> RemoveByQuery(Guid userId, [FromQuery] Guid bookingId, CancellationToken ct)
+        {
+            var result = await _basket.RemoveItemAsync(userId, bookingId, ct);
+            return StatusCode(result.Code, result);
+        }
         [HttpDelete("{userId:guid}")]
         public async Task<IActionResult> Clear(Guid userId, CancellationToken ct)
         {

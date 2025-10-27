@@ -14,7 +14,7 @@ namespace Trippio.Core.Services
         Task<BaseResponse<bool>> CancelOrderAsync(int id, Guid userId);
         Task<BaseResponse<decimal>> GetTotalRevenueAsync(DateTime from, DateTime to);
         Task<BaseResponse<IEnumerable<OrderDto>>> GetPendingOrdersAsync();
-        Task<BaseResponse<OrderDto>> CreateFromBasketAsync(Guid userId, Basket basket, CancellationToken ct = default);
+        Task<BaseResponse<OrderDto>> CreateFromBasketAsync(Guid userId, CancellationToken ct = default);
         Task<BaseResponse<OrderDto>> CreateOrderAsync(CreateOrderRequest request);
     }
 }

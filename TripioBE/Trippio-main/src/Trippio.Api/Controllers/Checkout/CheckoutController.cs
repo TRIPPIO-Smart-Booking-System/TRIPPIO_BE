@@ -115,7 +115,7 @@ public class CheckoutController : ControllerBase
                 basket.Items.Count, basket.Total);
 
             // Step 2: Create Order from basket
-            var orderResponse = await _orders.CreateFromBasketAsync(userId, basket, ct);
+            var orderResponse = await _orders.CreateFromBasketAsync(userId, ct);
             if (orderResponse.Code != 200 || orderResponse.Data == null)
             {
                 return StatusCode(orderResponse.Code, orderResponse);

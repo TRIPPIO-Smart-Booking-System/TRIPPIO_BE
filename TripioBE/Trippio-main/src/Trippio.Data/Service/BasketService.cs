@@ -1,5 +1,6 @@
 ﻿using StackExchange.Redis;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Trippio.Core.Models.Basket;
 using Trippio.Core.Models.Common;
 using Trippio.Core.Services;
@@ -12,7 +13,8 @@ namespace Trippio.Data.Service
         private static readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web)
         {
             WriteIndented = false,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            Converters = { new JsonStringEnumConverter() }
         };
 
         public BasketService(IConnectionMultiplexer mux) => _redis = mux.GetDatabase();
@@ -29,19 +31,19 @@ namespace Trippio.Data.Service
 
         public async Task<BaseResponse<Basket>> AddItemAsync(Guid userId, AddItemDto dto, CancellationToken ct = default)
         {
-            if (dto.Quantity <= 0) return BaseResponse<Basket>.Error("Quantity must be > 0", 400);
-            if (dto.Price < 0) return BaseResponse<Basket>.Error("Price must be >= 0", 400);
+            if (dto.BookingId == Guid.Empty) return BaseResponse<Basket>.Error("bookingId is required", 400);
+            if (dto.Quantity <= 0) return BaseResponse<Basket>.Error("quantity must be > 0", 400);
 
             var cur = (await GetAsync(userId, ct)).Data!;
             var items = cur.Items.ToList();
-            var exist = items.FirstOrDefault(i => i.ProductId == dto.ProductId);
+            var exist = items.FirstOrDefault(i => i.BookingId == dto.BookingId);
 
             if (exist is null)
-                items.Add(new BasketItem(dto.ProductId, dto.Quantity, dto.Price));
+                items.Add(new BasketItem(dto.BookingId, dto.Quantity, dto.UnitPrice ?? 0m));
             else
             {
                 var idx = items.IndexOf(exist);
-                items[idx] = exist with { Quantity = exist.Quantity + dto.Quantity, Price = dto.Price }; 
+                items[idx] = exist with { Quantity = exist.Quantity + dto.Quantity };
             }
 
             var updated = new Basket(userId, items);
@@ -51,11 +53,11 @@ namespace Trippio.Data.Service
 
         public async Task<BaseResponse<Basket>> UpdateQuantityAsync(Guid userId, UpdateItemQuantityDto dto, CancellationToken ct = default)
         {
-            if (dto.Quantity < 0) return BaseResponse<Basket>.Error("Quantity must be >= 0", 400);
+            if (dto.Quantity < 0) return BaseResponse<Basket>.Error("quantity must be >= 0", 400);
 
             var cur = (await GetAsync(userId, ct)).Data!;
             var items = cur.Items.ToList();
-            var exist = items.FirstOrDefault(i => i.ProductId == dto.ProductId);
+            var exist = items.FirstOrDefault(i => i.BookingId == dto.BookingId);
             if (exist is null) return BaseResponse<Basket>.NotFound("Item not found in basket");
 
             if (dto.Quantity == 0) items.Remove(exist);
@@ -70,13 +72,12 @@ namespace Trippio.Data.Service
             return BaseResponse<Basket>.Success(updated, "Basket updated");
         }
 
-        public async Task<BaseResponse<Basket>> RemoveItemAsync(Guid userId, string productId, CancellationToken ct = default)
+        public async Task<BaseResponse<Basket>> RemoveItemAsync(Guid userId, Guid bookingId, CancellationToken ct = default)
         {
             var cur = (await GetAsync(userId, ct)).Data!;
-            var exist = cur.Items.FirstOrDefault(i => i.ProductId == productId);
-            if (exist is null) return BaseResponse<Basket>.NotFound("Item not found in basket");
+            var items = cur.Items.Where(i => i.BookingId != bookingId).ToList();
+            if (items.Count == cur.Items.Count) return BaseResponse<Basket>.NotFound("Item not found in basket");
 
-            var items = cur.Items.Where(i => i.ProductId != productId).ToList();
             var updated = new Basket(userId, items);
             await _redis.StringSetAsync(Key(userId), JsonSerializer.Serialize(updated, _json), TimeSpan.FromDays(7));
             return BaseResponse<Basket>.Success(updated, "Item removed");

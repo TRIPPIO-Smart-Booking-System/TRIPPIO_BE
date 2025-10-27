@@ -22,14 +22,16 @@ namespace Trippio.Data.Service
         private readonly TrippioDbContext _db;
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
+        private readonly IBasketService _basket;
 
-        public OrderService(IOrderRepository orderRepo, TrippioDbContext db, IBookingRepository bookingRepo, IUnitOfWork uow, IMapper mapper)
+        public OrderService(IOrderRepository orderRepo, TrippioDbContext db, IBookingRepository bookingRepo, IUnitOfWork uow, IMapper mapper, IBasketService basket)
         {
             _orderRepo = orderRepo;
             _bookingRepo = bookingRepo;
             _db = db;
             _uow = uow;
             _mapper = mapper;
+            _basket = basket;
         }
 
         public async Task<BaseResponse<IEnumerable<OrderDto>>> GetByUserIdAsync(Guid userId)
@@ -141,12 +143,38 @@ namespace Trippio.Data.Service
         private static bool TryParseStatus(string status, out OrderStatus parsed)
             => Enum.TryParse(status?.Trim(), ignoreCase: true, out parsed);
 
-        public async Task<BaseResponse<OrderDto>> CreateFromBasketAsync(
-    Guid userId, Basket basket, CancellationToken ct = default)
+        public async Task<BaseResponse<OrderDto>> CreateFromBasketAsync(Guid userId, CancellationToken ct = default)
         {
+
+            var basketResp = await _basket.GetAsync(userId, ct);
+            var basket = basketResp.Data;
             if (basket == null || basket.Items.Count == 0)
                 return BaseResponse<OrderDto>.Error("Basket is empty", 400);
-            var total = basket.Items.Sum(i => i.Price * i.Quantity);
+
+            var bookingIds = basket.Items.Select(i => i.BookingId).Distinct().ToList();
+
+            var existed = await _db.Bookings
+                .Where(b => bookingIds.Contains(b.Id))
+                .Select(b => new
+                {
+                    b.Id,
+                })
+                .ToListAsync(ct);
+
+            var missing = bookingIds.Except(existed.Select(x => x.Id)).ToList();
+            if (missing.Any())
+                return BaseResponse<OrderDto>.Error($"Invalid BookingId(s): {string.Join(", ", missing)}", 400);
+
+            var dbPrice = existed.ToDictionary(x => x.Id, x => (decimal?)null );
+
+            var orderItems = basket.Items.Select(i => new OrderItemEntity
+            {
+                BookingId = i.BookingId,                            
+                Quantity = i.Quantity,
+                Price = dbPrice[i.BookingId] ?? i.UnitPrice      
+            }).ToList();
+
+            var total = orderItems.Sum(x => x.Price * x.Quantity);
 
             var order = new OrderEntity
             {
@@ -155,12 +183,7 @@ namespace Trippio.Data.Service
                 Status = OrderStatus.Pending,
                 DateCreated = DateTime.UtcNow,
                 TotalAmount = total,
-                OrderItems = basket.Items.Select(i => new OrderItemEntity
-                {
-                    BookingId = i.BookingId,  
-                    Quantity = i.Quantity,
-                    Price = i.Price
-                }).ToList()
+                OrderItems = orderItems
             };
 
             await _orderRepo.AddAsync(order);
@@ -169,10 +192,11 @@ namespace Trippio.Data.Service
             var loaded = await _orderRepo.Query()
                 .Where(o => o.Id == order.Id)
                 .Include(o => o.OrderItems).ThenInclude(oi => oi.Booking)
-                .SingleAsync();
+                .SingleAsync(ct);
 
-            return BaseResponse<OrderDto>.Success(
-                _mapper.Map<OrderDto>(loaded), "Order created from basket");
+            await _basket.ClearAsync(userId, ct);
+
+            return BaseResponse<OrderDto>.Success(_mapper.Map<OrderDto>(loaded), "Order created from basket");
         }
 
         public async Task<BaseResponse<OrderDto>> CreateOrderAsync(CreateOrderRequest request)

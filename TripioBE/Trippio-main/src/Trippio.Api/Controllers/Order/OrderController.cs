@@ -25,9 +25,9 @@ namespace Trippio.Api.Controllers
         }
 
         [HttpPost("from-basket/{userId:guid}")]
-        public async Task<IActionResult> CreateFromBasket(Guid userId)
+        public async Task<IActionResult> CreateFromBasket(Guid userId, CancellationToken ct)
         {
-            var result = await _orders.CreateFromBasketAsync(userId, basket: null);
+            var result = await _orders.CreateFromBasketAsync(userId, ct);
             return StatusCode(result.Code, result);
         }
 
