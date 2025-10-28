@@ -35,17 +35,10 @@ namespace Trippio.Api.Controllers
             return StatusCode(result.Code, result);
         }
 
-
-        [HttpDelete("{userId:guid}/items/{bookingId:guid}")]
-        public async Task<IActionResult> RemoveByPath(Guid userId, Guid bookingId, CancellationToken ct)
+        [HttpDelete("{userId:guid}/items/{productId}")]
+        public async Task<IActionResult> Remove(Guid userId, string productId, CancellationToken ct)
         {
-            var result = await _basket.RemoveItemAsync(userId, bookingId, ct);
-            return StatusCode(result.Code, result);
-        }
-        [HttpDelete("{userId:guid}/items")]
-        public async Task<IActionResult> RemoveByQuery(Guid userId, [FromQuery] Guid bookingId, CancellationToken ct)
-        {
-            var result = await _basket.RemoveItemAsync(userId, bookingId, ct);
+            var result = await _basket.RemoveItemAsync(userId, productId, ct);
             return StatusCode(result.Code, result);
         }
         [HttpDelete("{userId:guid}")]

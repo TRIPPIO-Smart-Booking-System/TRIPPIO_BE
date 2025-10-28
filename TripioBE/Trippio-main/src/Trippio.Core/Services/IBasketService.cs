@@ -11,7 +11,7 @@ namespace Trippio.Core.Services
 
         Task<BaseResponse<Basket>> UpdateQuantityAsync(Guid userId, UpdateItemQuantityDto dto, CancellationToken ct = default);
 
-        Task<BaseResponse<Basket>> RemoveItemAsync(Guid userId, Guid bookingId, CancellationToken ct = default);
+        Task<BaseResponse<Basket>> RemoveItemAsync(Guid userId, string productId, CancellationToken ct = default);
 
         Task<BaseResponse<bool>> ClearAsync(Guid userId, CancellationToken ct = default);
     }

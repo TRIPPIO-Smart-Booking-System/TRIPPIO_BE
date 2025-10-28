@@ -31,19 +31,34 @@ namespace Trippio.Data.Service
 
         public async Task<BaseResponse<Basket>> AddItemAsync(Guid userId, AddItemDto dto, CancellationToken ct = default)
         {
-            if (dto.BookingId == Guid.Empty) return BaseResponse<Basket>.Error("bookingId is required", 400);
-            if (dto.Quantity <= 0) return BaseResponse<Basket>.Error("quantity must be > 0", 400);
+            if (string.IsNullOrWhiteSpace(dto.ProductId))
+                return BaseResponse<Basket>.Error("productId is required", 400);
+            if (dto.Quantity <= 0)
+                return BaseResponse<Basket>.Error("quantity must be > 0", 400);
+            if (dto.UnitPrice < 0)
+                return BaseResponse<Basket>.Error("unitPrice must be >= 0", 400);
 
             var cur = (await GetAsync(userId, ct)).Data!;
             var items = cur.Items.ToList();
-            var exist = items.FirstOrDefault(i => i.BookingId == dto.BookingId);
 
+            // chuẩn hoá Attributes thành JsonDocument để lưu
+            JsonDocument? attrsDoc = null;
+            if (dto.Attributes.HasValue && dto.Attributes.Value.ValueKind != JsonValueKind.Undefined && dto.Attributes.Value.ValueKind != JsonValueKind.Null)
+                attrsDoc = JsonDocument.Parse(dto.Attributes.Value.GetRawText());
+
+            var newItem = new BasketItem(dto.ProductId, dto.Quantity, dto.UnitPrice, attrsDoc);
+
+            // key gộp item: productId + attributes JSON (nếu có)
+            string AttrKey(JsonDocument? d) => d is null ? "" : d.RootElement.GetRawText();
+            string keyOf(BasketItem i) => $"{i.ProductId}|{AttrKey(i.Attributes)}";
+
+            var exist = items.FirstOrDefault(i => keyOf(i) == keyOf(newItem));
             if (exist is null)
-                items.Add(new BasketItem(dto.BookingId, dto.Quantity, dto.UnitPrice ?? 0m));
+                items.Add(newItem);
             else
             {
                 var idx = items.IndexOf(exist);
-                items[idx] = exist with { Quantity = exist.Quantity + dto.Quantity };
+                items[idx] = exist with { Quantity = exist.Quantity + dto.Quantity, UnitPrice = dto.UnitPrice};
             }
 
             var updated = new Basket(userId, items);
@@ -57,8 +72,8 @@ namespace Trippio.Data.Service
 
             var cur = (await GetAsync(userId, ct)).Data!;
             var items = cur.Items.ToList();
-            var exist = items.FirstOrDefault(i => i.BookingId == dto.BookingId);
-            if (exist is null) return BaseResponse<Basket>.NotFound("Item not found in basket");
+            var exist = items.FirstOrDefault(i => i.ProductId == dto.ProductId);
+            if (exist is null) return BaseResponse<Basket>.NotFound("Item not found");
 
             if (dto.Quantity == 0) items.Remove(exist);
             else
@@ -72,12 +87,13 @@ namespace Trippio.Data.Service
             return BaseResponse<Basket>.Success(updated, "Basket updated");
         }
 
-        public async Task<BaseResponse<Basket>> RemoveItemAsync(Guid userId, Guid bookingId, CancellationToken ct = default)
+        public async Task<BaseResponse<Basket>> RemoveItemAsync(Guid userId, string productId, CancellationToken ct = default)
         {
             var cur = (await GetAsync(userId, ct)).Data!;
-            var items = cur.Items.Where(i => i.BookingId != bookingId).ToList();
-            if (items.Count == cur.Items.Count) return BaseResponse<Basket>.NotFound("Item not found in basket");
+            var exist = cur.Items.FirstOrDefault(i => i.ProductId == productId);
+            if (exist is null) return BaseResponse<Basket>.NotFound("Item not found");
 
+            var items = cur.Items.Where(i => i.ProductId != productId).ToList();
             var updated = new Basket(userId, items);
             await _redis.StringSetAsync(Key(userId), JsonSerializer.Serialize(updated, _json), TimeSpan.FromDays(7));
             return BaseResponse<Basket>.Success(updated, "Item removed");

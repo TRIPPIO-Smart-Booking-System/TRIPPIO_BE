@@ -1,13 +1,16 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 
 
 namespace Trippio.Core.Models.Basket
 {
    
     public record BasketItem(
-        Guid BookingId,
+        //Guid BookingId,
+        string ProductId,
         int Quantity,
-        decimal UnitPrice
+        decimal UnitPrice,
+        JsonDocument? Attributes = null
     );
 
     public class Basket
@@ -28,7 +31,7 @@ namespace Trippio.Core.Models.Basket
         }
     }
 
-    public sealed record AddItemDto(Guid BookingId, int Quantity = 1, decimal? UnitPrice = null);
-    public sealed record UpdateItemQuantityDto(Guid BookingId, int Quantity);
-    public sealed record RemoveItemDto(Guid BookingId);
+    public record AddItemDto(string ProductId, int Quantity, decimal UnitPrice, JsonElement? Attributes = null );
+    public sealed record UpdateItemQuantityDto(string ProductId, int Quantity);
+    public sealed record RemoveItemDto(string ProductId);
 }
