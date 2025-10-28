@@ -9,7 +9,7 @@ namespace Trippio.Core.Models.Basket
         //Guid BookingId,
         string ProductId,
         int Quantity,
-        decimal UnitPrice,
+        decimal Price,
         JsonDocument? Attributes = null
     );
 
@@ -19,7 +19,7 @@ namespace Trippio.Core.Models.Basket
         public IList<BasketItem> Items { get; init; } = new List<BasketItem>();
 
         [JsonIgnore]
-        public decimal Total => Items.Sum(i => i.UnitPrice * i.Quantity);
+        public decimal Total => Items.Sum(i => i.Price * i.Quantity);
 
         public Basket(Guid userId) => UserId = userId;
 
@@ -31,7 +31,7 @@ namespace Trippio.Core.Models.Basket
         }
     }
 
-    public record AddItemDto(string ProductId, int Quantity, decimal UnitPrice, JsonElement? Attributes = null );
+    public record AddItemDto(string ProductId, int Quantity, JsonElement? Attributes = null );
     public sealed record UpdateItemQuantityDto(string ProductId, int Quantity);
     public sealed record RemoveItemDto(string ProductId);
 }

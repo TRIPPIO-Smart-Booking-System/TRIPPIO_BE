@@ -146,17 +146,17 @@ namespace Trippio.Data.Service
 
         public async Task<BaseResponse<OrderDto>> CreateFromBasketAsync(Guid userId, CancellationToken ct = default)
         {
-            // 1) Lấy basket
+           
             var basketResp = await _basket.GetAsync(userId, ct);
             var basket = basketResp.Data;
             if (basket == null || basket.Items.Count == 0)
                 return BaseResponse<OrderDto>.Error("Basket is empty", 400);
 
-            // 2) Giao dịch để đảm bảo atomic (tạo bookings + order)
+          
             await using var tx = await _db.Database.BeginTransactionAsync(ct);
             try
             {
-                // 2.1) Tạo BOOKINGS từ basket items (vì OrderItem đang FK tới BookingId)
+                
                 var now = DateTime.UtcNow;
                 var newBookings = new List<Booking>();
                 foreach (var i in basket.Items)
@@ -165,26 +165,25 @@ namespace Trippio.Data.Service
                     {
                         Id = Guid.NewGuid(),
                         UserId = userId,
-                        // Vì giỏ “không phân biệt loại”, ta gán 1 loại chung.
-                        // Nếu bạn muốn tên khác ("BasketItem" / "Composite") thì đổi chuỗi này.
+                      
                         BookingType = "Misc",
                         Status = "Pending",
                         BookingDate = now,
-                        // tổng tiền cho booking này = unit * qty của item
-                        TotalAmount = i.UnitPrice * i.Quantity,
+                        
+                        TotalAmount = i.Price * i.Quantity,
                         DateCreated = now
                     };
                     newBookings.Add(b);
                 }
                 _db.Bookings.AddRange(newBookings);
 
-                // 2.2) Tạo ORDER + ORDER ITEMS trỏ tới các Booking vừa thêm
+                
                 var orderItems = newBookings
                     .Zip(basket.Items, (b, i) => new OrderItemEntity
                     {
                         BookingId = b.Id,
                         Quantity = i.Quantity,
-                        Price = i.UnitPrice
+                        Price = i.Price
                     })
                     .ToList();
 
@@ -201,14 +200,14 @@ namespace Trippio.Data.Service
                 };
 
                 await _orderRepo.AddAsync(order);
-                await _uow.CompleteAsync(); // lưu bookings + order + items
+                await _uow.CompleteAsync(); 
 
                 await tx.CommitAsync(ct);
 
-                // 2.3) Clear basket
+                
                 await _basket.ClearAsync(userId, ct);
 
-                // 2.4) Load lại order đầy đủ để trả về
+             
                 var loaded = await _orderRepo.Query()
                     .Where(o => o.Id == order.Id)
                     .Include(o => o.OrderItems).ThenInclude(oi => oi.Booking)
