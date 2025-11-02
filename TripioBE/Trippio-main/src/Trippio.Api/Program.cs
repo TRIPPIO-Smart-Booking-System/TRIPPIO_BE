@@ -156,6 +156,11 @@ internal class Program
             builder.Services.AddScoped<Trippio.Core.Services.IShowService, Trippio.Data.Services.ShowService>();
 
             // Idempotency
+            
+            // Register Review Service and Repository
+            builder.Services.AddScoped<Trippio.Core.Repositories.IReviewRepository, Trippio.Data.Repositories.ReviewRepository>();
+            builder.Services.AddScoped<Trippio.Core.Services.IReviewService, Trippio.Data.Services.ReviewService>();
+            //paymentwebhook
             builder.Services.AddScoped<IIdempotencyStore, RedisIdempotencyStore>();
 
             // Redis

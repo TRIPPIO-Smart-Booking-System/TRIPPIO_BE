@@ -16,7 +16,9 @@ namespace Trippio.Data.Repositories
         {
             return await _context.Payments
                 .Where(p => p.UserId == userId)
-                .Include(p => p.Order)
+                .Include(p => p.Order!)
+                    .ThenInclude(o => o.OrderItems)
+                        .ThenInclude(oi => oi.Booking)
                 .Include(p => p.Booking)
                 .OrderByDescending(p => p.PaidAt)
                 .ToListAsync();
@@ -42,7 +44,9 @@ namespace Trippio.Data.Repositories
         {
             var query = _context.Payments
                 .Where(p => p.UserId == userId)
-                .Include(p => p.Order)
+                .Include(p => p.Order!)
+                    .ThenInclude(o => o.OrderItems)
+                        .ThenInclude(oi => oi.Booking)
                 .Include(p => p.Booking);
 
             var totalItems = await query.CountAsync();
@@ -64,7 +68,9 @@ namespace Trippio.Data.Repositories
         {
             return await _context.Payments
                 .Where(p => p.PaidAt >= from && p.PaidAt <= to)
-                .Include(p => p.Order)
+                .Include(p => p.Order!)
+                    .ThenInclude(o => o.OrderItems)
+                        .ThenInclude(oi => oi.Booking)
                 .Include(p => p.Booking)
                 .OrderByDescending(p => p.PaidAt)
                 .ToListAsync();
