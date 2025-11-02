@@ -81,5 +81,41 @@ namespace Trippio.Api.Controllers
                 isEmailVerified = user.IsEmailVerified
             });
         }
+
+        /// <summary>
+        /// Update current user's avatar
+        /// </summary>
+        [HttpPut("avatar")]
+        public async Task<ActionResult> UpdateAvatar([FromBody] UpdateAvatarRequest request)
+        {
+            var userId = User.GetUserId();
+            if (userId == Guid.Empty)
+            {
+                return Unauthorized(new { message = "User ID not found in token." });
+            }
+
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user == null)
+            {
+                return NotFound(new { message = "User not found." });
+            }
+
+            user.Avatar = request.AvatarUrl;
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(new { message = "Failed to update avatar", errors = result.Errors });
+            }
+
+            return Ok(new { message = "Avatar updated successfully", avatar = user.Avatar });
+        }
+    }
+
+    public class UpdateAvatarRequest
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Avatar URL is required")]
+        [System.ComponentModel.DataAnnotations.MaxLength(500, ErrorMessage = "Avatar URL is too long")]
+        public string AvatarUrl { get; set; } = string.Empty;
     }
 }
