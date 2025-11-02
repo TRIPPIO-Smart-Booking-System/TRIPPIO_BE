@@ -48,6 +48,9 @@ namespace Trippio.Data
         // Payment & Others
         public DbSet<Payment> Payments { get; set; }
         public DbSet<ScheduledJob> ScheduledJobs { get; set; }
+        
+        // Review
+        public DbSet<Review> Reviews { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -236,6 +239,24 @@ namespace Trippio.Data
                 .WithMany()
                 .HasForeignKey(ebd => ebd.ShowId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Review relationships
+            builder.Entity<Review>()
+                .HasOne(r => r.Order)
+                .WithMany(o => o.Reviews)
+                .HasForeignKey(r => r.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Review>()
+                .HasOne(r => r.Customer)
+                .WithMany(c => c.Reviews)
+                .HasForeignKey(r => r.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Ensure one review per customer per order
+            builder.Entity<Review>()
+                .HasIndex(r => new { r.OrderId, r.CustomerId })
+                .IsUnique();
 
         }
         public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)

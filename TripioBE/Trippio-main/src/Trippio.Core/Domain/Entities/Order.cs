@@ -31,6 +31,7 @@ namespace Trippio.Core.Domain.Entities
 
         public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
         public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
+        public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
     }
 
 }
