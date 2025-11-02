@@ -34,7 +34,7 @@ jobs:
           context: .
           push: true
           tags: trippioacr.azurecr.io/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_EB4B5CE7AB2B4EE1BDC97BEF9E44D97C }}/trippioimage:${{ github.sha }}
-          file: ./Dockerfile
+          file: ./TrippioBE/Trippio-main/src/Trippio.Api/Dockerfile
 
   deploy:
     runs-on: ubuntu-latest
@@ -60,4 +60,5 @@ jobs:
           app-name: 'Trippio'
           slot-name: 'Production'
           images: 'trippioacr.azurecr.io/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_EB4B5CE7AB2B4EE1BDC97BEF9E44D97C }}/trippioimage:${{ github.sha }}'
+
           
