@@ -152,6 +152,10 @@ internal class Program
             builder.Services.AddScoped<Trippio.Core.Services.ITransportService, Trippio.Data.Services.TransportService>();
             builder.Services.AddScoped<Trippio.Core.Services.ITransportTripService, Trippio.Data.Services.TransportTripService>();
             builder.Services.AddScoped<Trippio.Core.Services.IShowService, Trippio.Data.Services.ShowService>();
+            
+            // Register Review Service and Repository
+            builder.Services.AddScoped<Trippio.Core.Repositories.IReviewRepository, Trippio.Data.Repositories.ReviewRepository>();
+            builder.Services.AddScoped<Trippio.Core.Services.IReviewService, Trippio.Data.Services.ReviewService>();
             //paymentwebhook
             builder.Services.AddScoped<IIdempotencyStore, RedisIdempotencyStore>();
             //Redis

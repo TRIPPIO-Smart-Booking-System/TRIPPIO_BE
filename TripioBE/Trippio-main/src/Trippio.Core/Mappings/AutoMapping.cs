@@ -5,6 +5,7 @@ using Trippio.Core.Models.Auth;
 using Trippio.Core.Models.Booking;
 using Trippio.Core.Models.Order;
 using Trippio.Core.Models.Payment;
+using Trippio.Core.Models.Review;
 using Trippio.Core.Models.System;
 
 namespace Trippio.Core.Mappings
@@ -86,6 +87,19 @@ namespace Trippio.Core.Mappings
 
             // Payment mappings
             CreateMap<Payment, PaymentDto>();
+
+            // Review mappings
+            CreateMap<Review, ReviewDto>()
+                .ForMember(dest => dest.CustomerName, opt => opt.MapFrom(src => src.Customer != null ? src.Customer.FullName : null));
+            CreateMap<CreateReviewRequest, Review>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.CustomerId, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow));
+            CreateMap<UpdateReviewDto, Review>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.OrderId, opt => opt.Ignore())
+                .ForMember(dest => dest.CustomerId, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
         }
     }
 }

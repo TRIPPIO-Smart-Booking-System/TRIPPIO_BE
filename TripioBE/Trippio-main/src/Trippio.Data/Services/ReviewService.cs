@@ -4,24 +4,22 @@ using Trippio.Core.Domain.Entities;
 using Trippio.Core.Models.Review;
 using Trippio.Core.Repositories;
 using Trippio.Core.Services;
+using Trippio.Data;
 
 namespace Trippio.Data.Services
 {
     public class ReviewService : IReviewService
     {
         private readonly IReviewRepository _reviewRepository;
-        private readonly IOrderRepository _orderRepository;
         private readonly TrippioDbContext _context;
         private readonly IMapper _mapper;
 
         public ReviewService(
             IReviewRepository reviewRepository,
-            IOrderRepository orderRepository,
             TrippioDbContext context,
             IMapper mapper)
         {
             _reviewRepository = reviewRepository;
-            _orderRepository = orderRepository;
             _context = context;
             _mapper = mapper;
         }
