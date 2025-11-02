@@ -7,7 +7,7 @@ on:
 
 env:
   IMAGE_NAME: trippioimage
-  DOCKERFILE: ./TrippioBE/Trippio-main/src/Trippio.Api/Dockerfile
+  DOCKERFILE: ./TripioBE/Trippio-main/src/Trippio.Api/Dockerfile
   BUILD_CONTEXT: .
 
 jobs:
@@ -69,4 +69,5 @@ jobs:
           app-name: 'Trippio'
           slot-name: 'Production'
           images: '${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}'
+
 
