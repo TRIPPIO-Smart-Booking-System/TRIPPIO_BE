@@ -25,15 +25,15 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: trippioacr.azurecr.io/
-          username: ${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_DFC47FE0EBE94F33AEC7264805BE8D8F }}
-          password: ${{ secrets.AZUREAPPSERVICE_CONTAINERPASSWORD_E4C62F8D9EC147C091E4388BFE71A653 }}
+          username: ${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_EB4B5CE7AB2B4EE1BDC97BEF9E44D97C }}
+          password: ${{ secrets.AZUREAPPSERVICE_CONTAINERPASSWORD_082D8F2091474924BA7DD2AC827446BA }}
 
       - name: Build and push container image to registry
         uses: docker/build-push-action@v3
         with:
           context: .
           push: true
-          tags: trippioacr.azurecr.io/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_DFC47FE0EBE94F33AEC7264805BE8D8F }}/trippioimage:latest:${{ github.sha }}
+          tags: trippioacr.azurecr.io/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_EB4B5CE7AB2B4EE1BDC97BEF9E44D97C }}/trippioimage:${{ github.sha }}
           file: ./Dockerfile
 
   deploy:
@@ -49,9 +49,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_8EDB80EE608C49BE9F7C7E4993F78AC6 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_668FEC353CC74BD0938B448026DA4B3B }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_525ECC233E604DAEAA599CEEDDC94753 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_CB06C8C410CD45DDA0F050727872E43C }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_E0C52D70895A4A32B4E54CA424EA0646 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_BD01B248CECA4C54A84C79C2EE242F25 }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
@@ -59,5 +59,5 @@ jobs:
         with:
           app-name: 'Trippio'
           slot-name: 'Production'
-          images: 'trippioacr.azurecr.io/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_DFC47FE0EBE94F33AEC7264805BE8D8F }}/trippioimage:latest:${{ github.sha }}'
+          images: 'trippioacr.azurecr.io/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_EB4B5CE7AB2B4EE1BDC97BEF9E44D97C }}/trippioimage:${{ github.sha }}'
           
