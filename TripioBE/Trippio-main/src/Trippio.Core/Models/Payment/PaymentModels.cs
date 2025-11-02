@@ -35,6 +35,38 @@ namespace Trippio.Core.Models.Payment
         public string Status { get; set; } = string.Empty;
         public string? PaymentLinkId { get; set; }
         public long? OrderCode { get; set; }
+        
+        // Related Order information
+        public OrderInfoDto? Order { get; set; }
+        public BookingInfoDto? Booking { get; set; }
+    }
+
+    public class OrderInfoDto
+    {
+        public int Id { get; set; }
+        public decimal TotalAmount { get; set; }
+        public DateTime OrderDate { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public List<OrderItemInfoDto> OrderItems { get; set; } = new();
+    }
+
+    public class OrderItemInfoDto
+    {
+        public int Id { get; set; }
+        public decimal Price { get; set; }
+        public int Quantity { get; set; }
+        public Guid? BookingId { get; set; }
+        public string? BookingName { get; set; }
+    }
+
+    public class BookingInfoDto
+    {
+        public Guid Id { get; set; }
+        public string BookingType { get; set; } = string.Empty;
+        public DateTime CheckInDate { get; set; }
+        public DateTime CheckOutDate { get; set; }
+        public decimal TotalPrice { get; set; }
+        public string Status { get; set; } = string.Empty;
     }
 
     public class UpdatePaymentStatusRequest

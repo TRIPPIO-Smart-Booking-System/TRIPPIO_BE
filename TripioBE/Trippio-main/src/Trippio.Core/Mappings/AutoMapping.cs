@@ -86,7 +86,20 @@ namespace Trippio.Core.Mappings
                 .ForMember(dest => dest.BookingName, opt => opt.MapFrom(src => src.Booking != null ? src.Booking.BookingType : string.Empty));
 
             // Payment mappings
-            CreateMap<Payment, PaymentDto>();
+            CreateMap<Payment, PaymentDto>()
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
+                .ForMember(dest => dest.Order, opt => opt.MapFrom(src => src.Order))
+                .ForMember(dest => dest.Booking, opt => opt.MapFrom(src => src.Booking));
+            
+            CreateMap<Order, OrderInfoDto>()
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
+                .ForMember(dest => dest.OrderItems, opt => opt.MapFrom(src => src.OrderItems));
+            
+            CreateMap<OrderItem, OrderItemInfoDto>()
+                .ForMember(dest => dest.BookingName, opt => opt.MapFrom(src => src.Booking != null ? src.Booking.BookingType : null));
+            
+            CreateMap<Booking, BookingInfoDto>()
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()));
 
             // Review mappings
             CreateMap<Review, ReviewDto>()
