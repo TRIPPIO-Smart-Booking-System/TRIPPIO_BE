@@ -46,43 +46,24 @@ namespace Trippio.Core.Models.Booking
         public int AvailableRooms { get; set; }
     }
 
-    public class CreateTransportBookingRequest
+    public class CreateTransportBookingRequest : ICreateBookingRequest
     {
-        [Required]
-        public Guid BookingId { get; set; }
+        [Required] public Guid UserId { get; set; }
 
-        [Required]
-        public Guid TicketId { get; set; }
+        [Required] public Guid TripId { get; set; }
 
-        [Required]
-        public DateTime DepartureTime { get; set; }
-
-        [Required]
-        public DateTime ArrivalTime { get; set; }
-
-        [Required]
-        [MaxLength(50)]
-        public required string SeatNumber { get; set; }
-
-        public int AvailableSeats { get; set; }
+        [Required, MaxLength(50)] public required string SeatNumber { get; set; }
+        public string? SeatClass { get; set; }
     }
 
-    public class CreateEntertainmentBookingRequest
+    public class CreateShowBookingRequest : ICreateBookingRequest
     {
-        [Required]
-        public Guid BookingId { get; set; }
+        [Required] public Guid UserId { get; set; }
+        [Required] public Guid ShowId { get; set; }
+        [Required, MaxLength(50)] public required string SeatNumber { get; set; }
 
-        [Required]
-        public Guid ShowId { get; set; }
-
-        [Required]
-        public DateTime ShowDate { get; set; }
-
-        [Required]
-        [MaxLength(50)]
-        public required string SeatNumber { get; set; }
-
-        public int AvailableTickets { get; set; }
+        public DateTime? ShowDate { get; set; }
+        public string? SeatClass { get; set; }
     }
 
     public class BookingDto
@@ -90,12 +71,28 @@ namespace Trippio.Core.Models.Booking
         public Guid Id { get; set; }
         public Guid UserId { get; set; }
         public string BookingType { get; set; } = string.Empty;
-        public DateTime BookingDate { get; set; }
-        public decimal TotalAmount { get; set; }
         public string Status { get; set; } = string.Empty;
+        public DateTime BookingDate { get; set; }
+        public decimal UnitPrice { get; set; }    
+        public int Quantity { get; set; }
+        public decimal TotalAmount { get; set; }   
         public DateTime DateCreated { get; set; }
 
-        // New navigation properties
+        public Guid? HotelId { get; set; }
+        public DateTime? CheckInDate { get; set; }
+        public DateTime? CheckOutDate { get; set; }
+
+        public Guid? TicketId { get; set; }
+        public DateTime? DepartureTime { get; set; }
+        public DateTime? ArrivalTime { get; set; }
+
+        public Guid? ShowId { get; set; }
+        public DateTime? ShowDate { get; set; }
+
+        public string? RoomType { get; set; }
+        public string? SeatNumber { get; set; }
+        public string? SeatClass { get; set; }
+
         public List<ExtraServiceDto> ExtraServices { get; set; } = new();
         public List<FeedbackDto> Feedbacks { get; set; } = new();
         public List<CommentDto> Comments { get; set; } = new();
@@ -114,33 +111,17 @@ namespace Trippio.Core.Models.Booking
 
     public class CreateExtraServiceDto
     {
-        [Required]
-        public Guid BookingId { get; set; }
-
-        [Required]
-        [MaxLength(200)]
-        public required string Name { get; set; }
-
-        [Required]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
-        public decimal Price { get; set; }
-
-        [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1")]
-        public int Quantity { get; set; } = 1;
+        [Required] public Guid BookingId { get; set; }
+        [Required, MaxLength(200)] public required string Name { get; set; }
+        [Required, Range(0.01, double.MaxValue)] public decimal Price { get; set; }
+        [Range(1, int.MaxValue)] public int Quantity { get; set; } = 1;
     }
 
     public class UpdateExtraServiceDto
     {
-        [Required]
-        [MaxLength(200)]
-        public required string Name { get; set; }
-
-        [Required]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
-        public decimal Price { get; set; }
-
-        [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1")]
-        public int Quantity { get; set; } = 1;
+        [Required, MaxLength(200)] public required string Name { get; set; }
+        [Required, Range(0.01, double.MaxValue)] public decimal Price { get; set; }
+        [Range(1, int.MaxValue)] public int Quantity { get; set; } = 1;
     }
 
     public class FeedbackDto
@@ -154,26 +135,17 @@ namespace Trippio.Core.Models.Booking
 
     public class CreateFeedbackDto
     {
-        [Required]
-        public Guid BookingId { get; set; }
-
-        [Required]
-        [Range(1, 5, ErrorMessage = "Rating must be between 1 and 5")]
-        public int Rating { get; set; }
-
-        [MaxLength(1000)]
-        public string? Comment { get; set; }
+        [Required] public Guid BookingId { get; set; }
+        [Required, Range(1, 5)] public int Rating { get; set; }
+        [MaxLength(1000)] public string? Comment { get; set; }
     }
 
     public class UpdateFeedbackDto
     {
-        [Required]
-        [Range(1, 5, ErrorMessage = "Rating must be between 1 and 5")]
-        public int Rating { get; set; }
-
-        [MaxLength(1000)]
-        public string? Comment { get; set; }
+        [Required, Range(1, 5)] public int Rating { get; set; }
+        [MaxLength(1000)] public string? Comment { get; set; }
     }
+
 
     public class CommentDto
     {
@@ -185,18 +157,30 @@ namespace Trippio.Core.Models.Booking
 
     public class CreateCommentDto
     {
-        [Required]
-        public Guid BookingId { get; set; }
-
-        [Required]
-        [MaxLength(2000)]
-        public required string Content { get; set; }
+        [Required] public Guid BookingId { get; set; }
+        [Required, MaxLength(2000)] public required string Content { get; set; }
     }
 
     public class UpdateCommentDto
     {
-        [Required]
-        [MaxLength(2000)]
-        public required string Content { get; set; }
+        [Required, MaxLength(2000)] public required string Content { get; set; }
     }
+
+    public enum BookingType { Accommodation, Transport, Show }
+    public enum BookingStatus { Pending, Confirmed, Cancelled }
+    public interface ICreateBookingRequest { Guid UserId { get; } }
+    public class CreateRoomBookingRequest : ICreateBookingRequest
+    {
+        [Required] public Guid UserId { get; set; }
+
+        [Required] public Guid RoomId { get; set; }
+
+        [Required] public DateTime CheckInDate { get; set; }
+        [Required] public DateTime CheckOutDate { get; set; }
+
+        [Range(1, int.MaxValue)] public int GuestCount { get; set; } = 1;
+    }
+
+
+
 }

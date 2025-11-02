@@ -12,6 +12,30 @@ namespace Trippio.Core.Mappings
 {
     public class AutoMapping : Profile
     {
+        private static BookingType ConvertBookingType(string? type)
+        {
+            if (string.IsNullOrWhiteSpace(type))
+                return BookingType.Accommodation;
+
+            return type.Trim().ToLower() switch
+            {
+                "accommodation" => BookingType.Accommodation,
+                "transport" => BookingType.Transport,
+                "entertainment" => BookingType.Show,
+                _ => BookingType.Accommodation
+            };
+        }
+
+        private static Models.Booking.BookingStatus ConvertBookingStatus(string? status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+                return Models.Booking.BookingStatus.Pending;
+
+            return Enum.TryParse<Models.Booking.BookingStatus>(status, true, out var result)
+                ? result
+                : Models.Booking.BookingStatus.Pending;
+        }
+
         public AutoMapping()
         {
             // Auth mappings
@@ -57,6 +81,12 @@ namespace Trippio.Core.Mappings
                 .ForMember(d => d.Status, opt => opt.Ignore())
                 .ForMember(d => d.DateCreated, opt => opt.Ignore())
                 .ForMember(d => d.ModifiedDate, opt => opt.Ignore());
+            CreateMap<Booking, BookingDto>()
+                .ForMember(d => d.BookingType, opt => opt.MapFrom(s =>
+        ConvertBookingType(s.BookingType)))
+                .ForMember(d => d.Status, opt => opt.MapFrom(s =>
+        ConvertBookingStatus(s.Status)));
+
             // ExtraService mappings
             CreateMap<ExtraService, ExtraServiceDto>();
             CreateMap<CreateExtraServiceDto, ExtraService>()

@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using Trippio.Core.Domain.Entities;
 using Trippio.Core.Models.Basket;
 using Trippio.Core.Models.Common;
@@ -22,14 +23,16 @@ namespace Trippio.Data.Service
         private readonly TrippioDbContext _db;
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
+        private readonly IBasketService _basket;
 
-        public OrderService(IOrderRepository orderRepo, TrippioDbContext db, IBookingRepository bookingRepo, IUnitOfWork uow, IMapper mapper)
+        public OrderService(IOrderRepository orderRepo, TrippioDbContext db, IBookingRepository bookingRepo, IUnitOfWork uow, IMapper mapper, IBasketService basket)
         {
             _orderRepo = orderRepo;
             _bookingRepo = bookingRepo;
             _db = db;
             _uow = uow;
             _mapper = mapper;
+            _basket = basket;
         }
 
         public async Task<BaseResponse<IEnumerable<OrderDto>>> GetByUserIdAsync(Guid userId)
@@ -141,38 +144,83 @@ namespace Trippio.Data.Service
         private static bool TryParseStatus(string status, out OrderStatus parsed)
             => Enum.TryParse(status?.Trim(), ignoreCase: true, out parsed);
 
-        public async Task<BaseResponse<OrderDto>> CreateFromBasketAsync(
-    Guid userId, Basket basket, CancellationToken ct = default)
+        public async Task<BaseResponse<OrderDto>> CreateFromBasketAsync(Guid userId, CancellationToken ct = default)
         {
+           
+            var basketResp = await _basket.GetAsync(userId, ct);
+            var basket = basketResp.Data;
             if (basket == null || basket.Items.Count == 0)
                 return BaseResponse<OrderDto>.Error("Basket is empty", 400);
-            var total = basket.Items.Sum(i => i.Price * i.Quantity);
 
-            var order = new OrderEntity
+          
+            await using var tx = await _db.Database.BeginTransactionAsync(ct);
+            try
             {
-                UserId = userId,
-                OrderDate = DateTime.UtcNow,
-                Status = OrderStatus.Pending,
-                DateCreated = DateTime.UtcNow,
-                TotalAmount = total,
-                OrderItems = basket.Items.Select(i => new OrderItemEntity
+                
+                var now = DateTime.UtcNow;
+                var newBookings = new List<Booking>();
+                foreach (var i in basket.Items)
                 {
-                    BookingId = i.BookingId,  
-                    Quantity = i.Quantity,
-                    Price = i.Price
-                }).ToList()
-            };
+                    var b = new Booking
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = userId,
+                      
+                        BookingType = "Misc",
+                        Status = "Pending",
+                        BookingDate = now,
+                        
+                        TotalAmount = i.Price * i.Quantity,
+                        DateCreated = now
+                    };
+                    newBookings.Add(b);
+                }
+                _db.Bookings.AddRange(newBookings);
 
-            await _orderRepo.AddAsync(order);
-            await _uow.CompleteAsync();
+                
+                var orderItems = newBookings
+                    .Zip(basket.Items, (b, i) => new OrderItemEntity
+                    {
+                        BookingId = b.Id,
+                        Quantity = i.Quantity,
+                        Price = i.Price
+                    })
+                    .ToList();
 
-            var loaded = await _orderRepo.Query()
-                .Where(o => o.Id == order.Id)
-                .Include(o => o.OrderItems).ThenInclude(oi => oi.Booking)
-                .SingleAsync();
+                var total = orderItems.Sum(x => x.Price * x.Quantity);
 
-            return BaseResponse<OrderDto>.Success(
-                _mapper.Map<OrderDto>(loaded), "Order created from basket");
+                var order = new OrderEntity
+                {
+                    UserId = userId,
+                    OrderDate = now,
+                    Status = OrderStatus.Pending,
+                    DateCreated = now,
+                    TotalAmount = total,
+                    OrderItems = orderItems
+                };
+
+                await _orderRepo.AddAsync(order);
+                await _uow.CompleteAsync(); 
+
+                await tx.CommitAsync(ct);
+
+                
+                await _basket.ClearAsync(userId, ct);
+
+             
+                var loaded = await _orderRepo.Query()
+                    .Where(o => o.Id == order.Id)
+                    .Include(o => o.OrderItems).ThenInclude(oi => oi.Booking)
+                    .SingleAsync(ct);
+
+                return BaseResponse<OrderDto>.Success(_mapper.Map<OrderDto>(loaded),
+                    "Order created from basket");
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync(ct);
+                return BaseResponse<OrderDto>.Error($"Failed to create order from basket: {ex.Message}", 500);
+            }
         }
 
         public async Task<BaseResponse<OrderDto>> CreateOrderAsync(CreateOrderRequest request)

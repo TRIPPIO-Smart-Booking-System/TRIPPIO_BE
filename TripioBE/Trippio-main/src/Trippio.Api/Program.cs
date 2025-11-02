@@ -12,30 +12,38 @@ using StackExchange.Redis;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 using Trippio.Api;
 using Trippio.Api.Authorization;
 using Trippio.Api.Filters;
 using Trippio.Api.Idempotency;
 using Trippio.Api.Service;
+
 using Trippio.Core.ConfigOptions;
 using Trippio.Core.Domain.Identity;
 using Trippio.Core.Repositories;
 using Trippio.Core.SeedWorks;
 using Trippio.Core.Services;
+
 using Trippio.Data;
 using Trippio.Data.Repositories;
 using Trippio.Data.SeedWorks;
 using Trippio.Data.Service;
+
+using Trippio.Core.Models.Basket; // ProductType
+
 internal class Program
 {
     private static async Task Main(string[] args)
     {
         Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(new ConfigurationBuilder()
-        .AddJsonFile("appsettings.json")
-        .Build())
-    .Enrich.FromLogContext()
-    .CreateLogger();
+            .ReadFrom.Configuration(new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json")
+                .Build())
+            .Enrich.FromLogContext()
+            .CreateLogger();
 
         try
         {
@@ -48,8 +56,11 @@ internal class Program
 
             builder.Host.UseSerilog();
 
+            // Authorization policies
             builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
             builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+
+            // CORS
             builder.Services.AddCors(o => o.AddPolicy(VietokemanPolicy, policy =>
             {
                 var allowedOrigins = configuration.GetSection("AllowedOrigins").Get<string[]>();
@@ -70,24 +81,18 @@ internal class Program
                 }
             }));
 
-
+            // DbContext
             builder.Services.AddDbContext<TrippioDbContext>(options =>
                 options.UseSqlServer(connectionString));
 
+            // Identity
             builder.Services.AddIdentity<AppUser, AppRole>(options =>
             {
                 options.SignIn.RequireConfirmedAccount = false;
             })
             .AddEntityFrameworkStores<TrippioDbContext>()
             .AddDefaultTokenProviders();
-            //if (config["Repository:Provider"] == "SqlServer")
-            //{
-            //    services.AddScoped<IRepositoryFactory, SqlServerRepositoryFactory>();
-            //}
-            //else if (config["Repository:Provider"] == "Postgre")
-            //{
-            //    services.AddScoped<IRepositoryFactory, PostgreRepositoryFactory>();
-            //}
+
             builder.Services.Configure<IdentityOptions>(options =>
             {
                 options.Password.RequireDigit = true;
@@ -96,99 +101,105 @@ internal class Program
                 options.Password.RequireUppercase = true;
                 options.Password.RequiredLength = 6;
                 options.Password.RequiredUniqueChars = 1;
+
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
                 options.Lockout.MaxFailedAccessAttempts = 5;
                 options.Lockout.AllowedForNewUsers = true;
+
                 options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
                 options.User.RequireUniqueEmail = false;
             });
 
+            // UoW & Generic repo
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             builder.Services.AddScoped(typeof(IRepository<,>), typeof(RepositoryBase<,>));
 
-            // Register Repositories
+            // Repositories
             builder.Services.AddScoped<Trippio.Core.Repositories.IBookingRepository, Trippio.Data.Repositories.BookingRepository>();
             builder.Services.AddScoped<Trippio.Core.Repositories.IPaymentRepository, Trippio.Data.Repositories.PaymentRepository>();
             builder.Services.AddScoped<Trippio.Core.Repositories.IExtraServiceRepository, Trippio.Data.Repositories.ExtraServiceRepository>();
             builder.Services.AddScoped<Trippio.Core.Repositories.IFeedbackRepository, Trippio.Data.Repositories.FeedbackRepository>();
             builder.Services.AddScoped<Trippio.Core.Repositories.ICommentRepository, Trippio.Data.Repositories.CommentRepository>();
-            
-            // Register Master Data Repositories
+
+            // Master Data Repositories
             builder.Services.AddScoped<Trippio.Core.Repositories.IHotelRepository, Trippio.Data.Repositories.HotelRepository>();
             builder.Services.AddScoped<Trippio.Core.Repositories.IRoomRepository, Trippio.Data.Repositories.RoomRepository>();
             builder.Services.AddScoped<Trippio.Core.Repositories.ITransportRepository, Trippio.Data.Repositories.TransportRepository>();
             builder.Services.AddScoped<Trippio.Core.Repositories.ITransportTripRepository, Trippio.Data.Repositories.TransportTripRepository>();
             builder.Services.AddScoped<Trippio.Core.Repositories.IShowRepository, Trippio.Data.Repositories.ShowRepository>();
 
-            // Register Services
-            //builder.Services.AddScoped<Trippio.Core.Services.IOrderService, Trippio.Data.Services.OrderService>();
-            //builder.Services.AddScoped<Trippio.Core.Services.IBookingService, Trippio.Data.Services.BookingService>();
-            //builder.Services.AddScoped<Trippio.Core.Services.IPaymentService, Trippio.Data.Services.PaymentService>();
-            //builder.Services.AddScoped<Trippio.Core.Services.IBasketService, Trippio.Data.Services.BasketService>();
-
+            // AutoMapper
             builder.Services.AddAutoMapper(typeof(Trippio.Core.Mappings.AutoMapping));
 
+            // Options
             builder.Services.Configure<JwtTokenSettings>(configuration.GetSection("JwtTokenSettings"));
             builder.Services.Configure<MediaSettings>(configuration.GetSection("MediaSettings"));
             builder.Services.Configure<VNPayOptions>(configuration.GetSection("Payments:VNPay"));
             builder.Services.Configure<RedirectUrlsOptions>(configuration.GetSection("Payments:RedirectUrls"));
-            // Register PayOS Configuration for Real Money Payment
             builder.Services.Configure<PayOSSettings>(configuration.GetSection("PayOS"));
+
+            // App services
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IBasketService, Trippio.Data.Service.BasketService>();
-            // Register Email Service
             builder.Services.AddScoped<Trippio.Core.Services.IEmailService, Trippio.Data.Service.EmailService>();
-            //Order
+
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-            //
             builder.Services.AddScoped<IOrderService, Trippio.Data.Service.OrderService>();
             builder.Services.AddScoped<IBookingService, Trippio.Data.Service.BookingService>();
-            //Payment
             builder.Services.AddScoped<IPaymentService, Trippio.Data.Service.PaymentService>();
-            
-            // Register Master Data Services
+
+            // Master Data Services
             builder.Services.AddScoped<Trippio.Core.Services.IHotelService, Trippio.Data.Services.HotelService>();
             builder.Services.AddScoped<Trippio.Core.Services.IRoomService, Trippio.Data.Services.RoomService>();
             builder.Services.AddScoped<Trippio.Core.Services.ITransportService, Trippio.Data.Services.TransportService>();
             builder.Services.AddScoped<Trippio.Core.Services.ITransportTripService, Trippio.Data.Services.TransportTripService>();
             builder.Services.AddScoped<Trippio.Core.Services.IShowService, Trippio.Data.Services.ShowService>();
+
+            // Idempotency
             
             // Register Review Service and Repository
             builder.Services.AddScoped<Trippio.Core.Repositories.IReviewRepository, Trippio.Data.Repositories.ReviewRepository>();
             builder.Services.AddScoped<Trippio.Core.Services.IReviewService, Trippio.Data.Services.ReviewService>();
             //paymentwebhook
             builder.Services.AddScoped<IIdempotencyStore, RedisIdempotencyStore>();
-            //Redis
+
+            // Redis
             builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
-            ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")!));
+                ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")!));
+           
 
-            // Add Health Checks
-
+            // Health Checks
             builder.Services.AddHealthChecks()
                 .AddSqlServer(connectionString, name: "sql-server")
                 .AddCheck("self", () => HealthCheckResult.Healthy("API is running"));
 
+            // Controllers + System.Text.Json config (enum -> "room"/"show"/"flight")
             builder.Services.AddControllers()
                 .AddJsonOptions(options =>
                 {
-                    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+                    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+                    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+                    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
                     options.JsonSerializerOptions.WriteIndented = true;
+                    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
                 });
 
+            // Swagger
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(c =>
             {
                 c.CustomOperationIds(apiDesc =>
-                {
-                    return apiDesc.TryGetMethodInfo(out MethodInfo methodInfo) ? methodInfo.Name : null;
-                });
+                    apiDesc.TryGetMethodInfo(out MethodInfo methodInfo) ? methodInfo.Name : null);
+
                 c.SwaggerDoc("TrippioAPI", new OpenApiInfo
                 {
                     Version = "v1",
                     Title = "API for Trippio",
                     Description = "API for Trippio core domain. This domain keeps track of campaigns, campaign rules, and campaign execution."
                 });
+
                 c.ParameterFilter<SwaggerNullableParameterFilter>();
+
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
                     Description = "JWT Authorization header using the Bearer scheme. Example: Bearer {token}",
@@ -198,27 +209,30 @@ internal class Program
                     Scheme = "bearer",
                     BearerFormat = "JWT"
                 });
+
                 c.AddSecurityRequirement(new OpenApiSecurityRequirement
                 {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
                     {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = JwtBearerDefaults.AuthenticationScheme
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = JwtBearerDefaults.AuthenticationScheme
+                            }
+                        },
+                        Array.Empty<string>()
                     }
-                },
-                new string[] {}
-            }
                 });
             });
 
+            // AuthN
             builder.Services.AddAuthentication(o =>
             {
                 o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 o.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            }).AddJwtBearer(cfg =>
+            })
+            .AddJwtBearer(cfg =>
             {
                 cfg.RequireHttpsMetadata = false;
                 cfg.SaveToken = true;
@@ -230,13 +244,12 @@ internal class Program
                 };
             });
 
-
             var app = builder.Build();
 
             app.UseStaticFiles();
-            app.UseSerilogRequestLogging(); // Log HTTP request pipeline
+            app.UseSerilogRequestLogging();
 
-            // CORS must be placed after UseStaticFiles and before UseAuthentication
+            // CORS (sau static files, trước auth)
             app.UseCors(VietokemanPolicy);
 
             if (app.Environment.IsDevelopment())
@@ -245,15 +258,14 @@ internal class Program
                 app.UseSwaggerUI(c =>
                 {
                     c.SwaggerEndpoint("/swagger/TrippioAPI/swagger.json", "Trippio API");
-                    c.RoutePrefix = "swagger"; // This makes Swagger UI available at /swagger
+                    c.RoutePrefix = "swagger";
                     c.DisplayOperationId();
                     c.DisplayRequestDuration();
                     c.InjectStylesheet("/swagger-custom.css");
                 });
             }
 
-
-            // Health check endpoints
+            // Health checks
             app.MapHealthChecks("/health", new HealthCheckOptions
             {
                 ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
@@ -286,4 +298,5 @@ internal class Program
             Log.CloseAndFlush();
         }
     }
+    
 }

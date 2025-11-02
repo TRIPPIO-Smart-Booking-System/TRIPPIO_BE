@@ -7,15 +7,12 @@ namespace Trippio.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] 
-    public class BasketController : ControllerBase
+    [Authorize]
+    public sealed class BasketController : ControllerBase
     {
         private readonly IBasketService _basket;
 
-        public BasketController(IBasketService basket)
-        {
-            _basket = basket;
-        }
+        public BasketController(IBasketService basket) => _basket = basket;
 
         [HttpGet("{userId:guid}")]
         public async Task<IActionResult> Get(Guid userId, CancellationToken ct)
@@ -44,7 +41,6 @@ namespace Trippio.Api.Controllers
             var result = await _basket.RemoveItemAsync(userId, productId, ct);
             return StatusCode(result.Code, result);
         }
-
         [HttpDelete("{userId:guid}")]
         public async Task<IActionResult> Clear(Guid userId, CancellationToken ct)
         {
