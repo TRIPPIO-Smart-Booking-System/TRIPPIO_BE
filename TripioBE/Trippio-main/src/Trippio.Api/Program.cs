@@ -261,7 +261,7 @@ internal class Program
                     c.RoutePrefix = "swagger";
                     c.DisplayOperationId();
                     c.DisplayRequestDuration();
-                    c.InjectStylesheet("/swagger-custom.css");
+                    // c.InjectStylesheet("/swagger-custom.css");
                 });
             }
 
