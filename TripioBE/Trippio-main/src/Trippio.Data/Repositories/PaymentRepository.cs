@@ -12,14 +12,29 @@ namespace Trippio.Data.Repositories
         {
         }
 
-        public async Task<IEnumerable<Payment>> GetByUserIdAsync(Guid userId)
+        // Override GetAllAsync to include Order and Booking navigation properties
+        public override async Task<IEnumerable<Payment>> GetAllAsync()
         {
             return await _context.Payments
-                .Where(p => p.UserId == userId)
-                .Include(p => p.Order!)
+                .Include(p => p.Order)
                     .ThenInclude(o => o.OrderItems)
                         .ThenInclude(oi => oi.Booking)
                 .Include(p => p.Booking)
+                .AsSplitQuery()
+                .OrderByDescending(p => p.PaidAt)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Payment>> GetByUserIdAsync(Guid userId)
+        {
+            // FIXED: Remove null-forgiving operator and use AsSplitQuery to prevent cartesian explosion
+            return await _context.Payments
+                .Where(p => p.UserId == userId)
+                .Include(p => p.Order)
+                    .ThenInclude(o => o.OrderItems)
+                        .ThenInclude(oi => oi.Booking)
+                .Include(p => p.Booking)
+                .AsSplitQuery() // Prevents cartesian explosion with multiple includes
                 .OrderByDescending(p => p.PaidAt)
                 .ToListAsync();
         }
@@ -40,14 +55,26 @@ namespace Trippio.Data.Repositories
                 .ToListAsync();
         }
 
+        public async Task<Payment?> GetByOrderCodeAsync(long orderCode)
+        {
+            return await _context.Payments
+                .Include(p => p.Order)
+                    .ThenInclude(o => o.OrderItems)
+                        .ThenInclude(oi => oi.Booking)
+                .Include(p => p.Booking)
+                .AsSplitQuery()
+                .FirstOrDefaultAsync(p => p.OrderCode == orderCode);
+        }
+
         public async Task<PageResult<Payment>> GetPagedByUserIdAsync(Guid userId, int pageIndex, int pageSize)
         {
             var query = _context.Payments
                 .Where(p => p.UserId == userId)
-                .Include(p => p.Order!)
+                .Include(p => p.Order)
                     .ThenInclude(o => o.OrderItems)
                         .ThenInclude(oi => oi.Booking)
-                .Include(p => p.Booking);
+                .Include(p => p.Booking)
+                .AsSplitQuery();
 
             var totalItems = await query.CountAsync();
             var items = await query.OrderByDescending(p => p.PaidAt)
@@ -68,10 +95,11 @@ namespace Trippio.Data.Repositories
         {
             return await _context.Payments
                 .Where(p => p.PaidAt >= from && p.PaidAt <= to)
-                .Include(p => p.Order!)
+                .Include(p => p.Order)
                     .ThenInclude(o => o.OrderItems)
                         .ThenInclude(oi => oi.Booking)
                 .Include(p => p.Booking)
+                .AsSplitQuery()
                 .OrderByDescending(p => p.PaidAt)
                 .ToListAsync();
         }

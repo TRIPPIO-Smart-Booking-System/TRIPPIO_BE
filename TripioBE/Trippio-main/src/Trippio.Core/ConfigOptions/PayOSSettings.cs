@@ -22,13 +22,43 @@ namespace Trippio.Core.ConfigOptions
         public string ChecksumKey { get; set; } = string.Empty;
 
         /// <summary>
-        /// Return URL after successful payment (e.g., "http://localhost:3000/payment-success")
+        /// Return URL after successful payment for Web (e.g., "http://localhost:3000/payment-success")
         /// </summary>
-        public string ReturnUrl { get; set; } = string.Empty;
+        public string WebReturnUrl { get; set; } = string.Empty;
 
         /// <summary>
-        /// Cancel URL if user cancels payment (e.g., "http://localhost:3000/payment-cancel")
+        /// Cancel URL if user cancels payment for Web (e.g., "http://localhost:3000/payment-cancel")
         /// </summary>
-        public string CancelUrl { get; set; } = string.Empty;
+        public string WebCancelUrl { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Return URL after successful payment for Mobile (e.g., "trippio://payment/success")
+        /// </summary>
+        public string MobileReturnUrl { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Cancel URL if user cancels payment for Mobile (e.g., "trippio://payment/cancel")
+        /// </summary>
+        public string MobileCancelUrl { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Webhook URL for PayOS callback (e.g., "https://your-backend.com/api/payment/payos-callback")
+        /// </summary>
+        public string WebhookUrl { get; set; } = string.Empty;
+
+        // Legacy properties for backward compatibility
+        [Obsolete("Use WebReturnUrl instead")]
+        public string ReturnUrl
+        {
+            get => WebReturnUrl;
+            set => WebReturnUrl = value;
+        }
+
+        [Obsolete("Use WebCancelUrl instead")]
+        public string CancelUrl
+        {
+            get => WebCancelUrl;
+            set => WebCancelUrl = value;
+        }
     }
 }

@@ -51,11 +51,13 @@ public class CheckoutController : ControllerBase
     /// <param name="BuyerName">Buyer's name (optional)</param>
     /// <param name="BuyerEmail">Buyer's email (optional)</param>
     /// <param name="BuyerPhone">Buyer's phone (optional)</param>
+    /// <param name="Platform">Platform type: "web" or "mobile" (default: "web")</param>
     public record StartCheckoutDto(
         Guid? UserId = null,
         string? BuyerName = null,
         string? BuyerEmail = null,
-        string? BuyerPhone = null
+        string? BuyerPhone = null,
+        string? Platform = "web"
     );
 
     /// <summary>
@@ -158,14 +160,22 @@ public class CheckoutController : ControllerBase
                 )
             };
 
+            // Determine return/cancel URLs based on platform
+            var isMobile = dto.Platform?.ToLowerInvariant() == "mobile";
+            var returnUrl = isMobile ? _payOSSettings.MobileReturnUrl : _payOSSettings.WebReturnUrl;
+            var cancelUrl = isMobile ? _payOSSettings.MobileCancelUrl : _payOSSettings.WebCancelUrl;
+
+            _logger.LogInformation("Creating payment for platform: {Platform}, ReturnUrl: {ReturnUrl}", 
+                dto.Platform ?? "web", returnUrl);
+
             // Create PayOS payment data
             var paymentData = new PaymentData(
                 orderCode: orderCode,
                 amount: (int)order.TotalAmount,  // PayOS expects int amount in VND
                 description: $"Payment for Order #{order.Id}",
                 items: paymentItems,
-                cancelUrl: _payOSSettings.CancelUrl,
-                returnUrl: _payOSSettings.ReturnUrl,
+                cancelUrl: cancelUrl,
+                returnUrl: returnUrl,
                 buyerName: dto.BuyerName,
                 buyerEmail: dto.BuyerEmail,
                 buyerPhone: dto.BuyerPhone

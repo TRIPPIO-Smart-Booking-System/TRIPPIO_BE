@@ -1,4 +1,5 @@
 using Trippio.Core.Domain.Entities;
+using Trippio.Core.Models.Room;
 using Trippio.Core.Repositories;
 using Trippio.Core.Services;
 using Trippio.Core.SeedWorks;
@@ -41,25 +42,35 @@ namespace Trippio.Data.Services
             return await _roomRepository.GetAvailableRoomsAsync(hotelId);
         }
 
-        public async Task<Room> CreateRoomAsync(Room room)
+        public async Task<Room> CreateRoomAsync(CreateRoomRequest request)
         {
-            room.DateCreated = DateTime.UtcNow;
+            var room = new Room
+            {
+                Id = Guid.NewGuid(),
+                HotelId = request.HotelId,
+                RoomType = request.RoomType,
+                PricePerNight = request.PricePerNight,
+                Capacity = request.Capacity,
+                AvailableRooms = request.AvailableRooms,
+                DateCreated = DateTime.UtcNow
+            };
+
             await _roomRepository.Add(room);
             await _unitOfWork.CompleteAsync();
             return room;
         }
 
-        public async Task<Room?> UpdateRoomAsync(Guid id, Room room)
+        public async Task<Room?> UpdateRoomAsync(Guid id, UpdateRoomRequest request)
         {
             var existingRoom = await _roomRepository.GetByIdAsync(id);
             if (existingRoom == null)
                 return null;
 
-            existingRoom.HotelId = room.HotelId;
-            existingRoom.RoomType = room.RoomType;
-            existingRoom.PricePerNight = room.PricePerNight;
-            existingRoom.Capacity = room.Capacity;
-            existingRoom.AvailableRooms = room.AvailableRooms;
+            existingRoom.HotelId = request.HotelId;
+            existingRoom.RoomType = request.RoomType;
+            existingRoom.PricePerNight = request.PricePerNight;
+            existingRoom.Capacity = request.Capacity;
+            existingRoom.AvailableRooms = request.AvailableRooms;
             existingRoom.ModifiedDate = DateTime.UtcNow;
 
             await _unitOfWork.CompleteAsync();

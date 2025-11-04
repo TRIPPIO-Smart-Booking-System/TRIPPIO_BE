@@ -64,6 +64,15 @@ namespace Trippio.Data.Service
             return BaseResponse<PaymentDto>.Success(_mapper.Map<PaymentDto>(payment));
         }
 
+        public async Task<BaseResponse<PaymentDto>> GetByOrderCodeAsync(long orderCode)
+        {
+            var payment = await _paymentRepo.GetByOrderCodeAsync(orderCode);
+            if (payment == null)
+                return BaseResponse<PaymentDto>.NotFound($"Payment not found for OrderCode: {orderCode}");
+
+            return BaseResponse<PaymentDto>.Success(_mapper.Map<PaymentDto>(payment));
+        }
+
         public async Task<BaseResponse<IEnumerable<PaymentDto>>> GetByOrderIdAsync(int orderId)
         {
             var payments = await _paymentRepo.GetByOrderIdAsync(orderId);
@@ -270,9 +279,8 @@ namespace Trippio.Data.Service
                 if (!Enum.TryParse(status, true, out PaymentStatus parsedStatus))
                     return BaseResponse<PaymentDto>.Error($"Unknown status: {status}", 400);
 
-                // Find payment by OrderCode
-                var allPayments = await _paymentRepo.GetAllAsync();
-                var payment = allPayments.FirstOrDefault(p => p.OrderCode == orderCode);
+                // Find payment by OrderCode - FIXED: Use direct query instead of GetAllAsync
+                var payment = await _paymentRepo.GetByOrderCodeAsync(orderCode);
 
                 if (payment == null)
                     return BaseResponse<PaymentDto>.NotFound($"Payment not found for OrderCode: {orderCode}");
