@@ -12,6 +12,19 @@ namespace Trippio.Data.Repositories
         {
         }
 
+        // Override GetAllAsync to include Order and Booking navigation properties
+        public override async Task<IEnumerable<Payment>> GetAllAsync()
+        {
+            return await _context.Payments
+                .Include(p => p.Order)
+                    .ThenInclude(o => o.OrderItems)
+                        .ThenInclude(oi => oi.Booking)
+                .Include(p => p.Booking)
+                .AsSplitQuery()
+                .OrderByDescending(p => p.PaidAt)
+                .ToListAsync();
+        }
+
         public async Task<IEnumerable<Payment>> GetByUserIdAsync(Guid userId)
         {
             // FIXED: Remove null-forgiving operator and use AsSplitQuery to prevent cartesian explosion
