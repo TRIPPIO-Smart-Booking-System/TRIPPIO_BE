@@ -251,8 +251,8 @@ internal class Program
 
             // CORS (sau static files, trước auth)
             app.UseCors(VietokemanPolicy);
-
-            if (app.Environment.IsDevelopment())
+            var enableSwagger = builder.Configuration.GetValue<bool>("Swagger__Enabled", true);
+            if (enableSwagger)
             {
                 app.UseSwagger();
                 app.UseSwaggerUI(c =>
@@ -261,8 +261,9 @@ internal class Program
                     c.RoutePrefix = "swagger";
                     c.DisplayOperationId();
                     c.DisplayRequestDuration();
-                    c.InjectStylesheet("/swagger-custom.css");
+                    // c.InjectStylesheet("/swagger-custom.css");
                 });
+                app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
             }
 
             // Health checks
@@ -281,7 +282,7 @@ internal class Program
                 ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
             });
 
-            app.UseHttpsRedirection();
+            // app.UseHttpsRedirection();
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
