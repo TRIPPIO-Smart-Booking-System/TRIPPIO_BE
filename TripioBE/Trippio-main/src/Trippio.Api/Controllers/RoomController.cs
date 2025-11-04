@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Trippio.Core.Domain.Entities;
+using Trippio.Core.Models.Room;
 using Trippio.Core.Services;
 
 namespace Trippio.Api.Controllers
@@ -126,20 +127,35 @@ namespace Trippio.Api.Controllers
         [HttpPost]
         [ProducesResponseType(typeof(Room), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Create([FromBody] Room room)
+        public async Task<IActionResult> Create([FromBody] CreateRoomRequest request)
         {
             try
             {
                 if (!ModelState.IsValid)
+                {
+                    _logger.LogWarning("Invalid model state for room creation: {Errors}", 
+                        string.Join(", ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)));
                     return BadRequest(ModelState);
+                }
 
-                var createdRoom = await _roomService.CreateRoomAsync(room);
+                _logger.LogInformation("Creating room for HotelId: {HotelId}, RoomType: {RoomType}", 
+                    request.HotelId, request.RoomType);
+
+                var createdRoom = await _roomService.CreateRoomAsync(request);
+                
+                _logger.LogInformation("Room created successfully with ID: {RoomId}", createdRoom.Id);
+                
                 return CreatedAtAction(nameof(GetById), new { id = createdRoom.Id }, createdRoom);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating room");
-                return StatusCode(500, new { message = "An error occurred while creating the room" });
+                _logger.LogError(ex, "Error creating room for HotelId: {HotelId}", request?.HotelId);
+                return StatusCode(500, new 
+                { 
+                    message = "An error occurred while creating the room",
+                    error = ex.Message,
+                    details = ex.InnerException?.Message
+                });
             }
         }
 
@@ -150,23 +166,38 @@ namespace Trippio.Api.Controllers
         [ProducesResponseType(typeof(Room), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Update(Guid id, [FromBody] Room room)
+        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateRoomRequest request)
         {
             try
             {
                 if (!ModelState.IsValid)
+                {
+                    _logger.LogWarning("Invalid model state for room update: {Errors}", 
+                        string.Join(", ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)));
                     return BadRequest(ModelState);
+                }
 
-                var updatedRoom = await _roomService.UpdateRoomAsync(id, room);
+                _logger.LogInformation("Updating room: {RoomId}", id);
+
+                var updatedRoom = await _roomService.UpdateRoomAsync(id, request);
                 if (updatedRoom == null)
+                {
+                    _logger.LogWarning("Room not found for update: {RoomId}", id);
                     return NotFound(new { message = $"Room with ID {id} not found" });
+                }
 
+                _logger.LogInformation("Room updated successfully: {RoomId}", id);
                 return Ok(updatedRoom);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating room: {Id}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the room" });
+                return StatusCode(500, new 
+                { 
+                    message = "An error occurred while updating the room",
+                    error = ex.Message,
+                    details = ex.InnerException?.Message
+                });
             }
         }
 
