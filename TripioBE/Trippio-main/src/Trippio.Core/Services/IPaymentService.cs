@@ -9,6 +9,7 @@ namespace Trippio.Core.Services
         Task<BaseResponse<IEnumerable<PaymentDto>>> GetAllAsync();
         Task<BaseResponse<IEnumerable<PaymentDto>>> GetByUserIdAsync(Guid userId);
         Task<BaseResponse<PaymentDto>> GetByIdAsync(Guid id);
+        Task<BaseResponse<PaymentDto>> GetByOrderCodeAsync(long orderCode);
         Task<BaseResponse<IEnumerable<PaymentDto>>> GetByOrderIdAsync(int orderId);
         Task<BaseResponse<IEnumerable<PaymentDto>>> GetByBookingIdAsync(Guid bookingId);
         Task<BaseResponse<PaymentDto>> RefundPaymentAsync(Guid paymentId, decimal amount);

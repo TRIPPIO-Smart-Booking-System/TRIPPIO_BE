@@ -40,6 +40,16 @@ namespace Trippio.Data.Repositories
                 .ToListAsync();
         }
 
+        public async Task<Payment?> GetByOrderCodeAsync(long orderCode)
+        {
+            return await _context.Payments
+                .Include(p => p.Order!)
+                    .ThenInclude(o => o.OrderItems)
+                        .ThenInclude(oi => oi.Booking)
+                .Include(p => p.Booking)
+                .FirstOrDefaultAsync(p => p.OrderCode == orderCode);
+        }
+
         public async Task<PageResult<Payment>> GetPagedByUserIdAsync(Guid userId, int pageIndex, int pageSize)
         {
             var query = _context.Payments
