@@ -207,22 +207,26 @@ namespace Trippio.Api.Controllers.Payment
                 // Get authenticated user ID from JWT token
                 var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
                     ?? User.FindFirst("sub")?.Value;
-                    if (string.IsNullOrEmpty(userIdClaim))
-                  {
-                   userIdClaim = User.Claims.FirstOrDefault(c => 
-                   string.Equals(c.Type, "id", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(c.Type, "user_id", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(c.Type, "uid", StringComparison.OrdinalIgnoreCase))?.Value;
-                  }
-                
+                                                 
                 if (string.IsNullOrEmpty(userIdClaim))
                 {
+                    _logger.LogWarning("No userId claim found in JWT token");
                     return Unauthorized(new { message = "User not authenticated" });
                 }
+                
+                if (userIdClaim.StartsWith("auth0|", StringComparison.OrdinalIgnoreCase))
+                {
+                    userIdClaim = userIdClaim.Split('|')[1];
+                }
+                
                 if (!Guid.TryParse(userIdClaim, out var authenticatedUserId))
                 {
                 _logger.LogWarning("Invalid user id claim format: {ClaimValue}", userIdClaim);
-                return Unauthorized(new { message = "Invalid user id in token" });
+                return StatusCode(500, new
+                {
+                message = "Invalid user ID format in authentication token",
+                claimValue = userIdClaim
+                });
                 }
                 // var authenticatedUserId = Guid.Parse(userIdClaim);
                 
