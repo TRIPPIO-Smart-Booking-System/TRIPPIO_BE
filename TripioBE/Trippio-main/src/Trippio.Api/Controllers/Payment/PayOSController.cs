@@ -214,20 +214,26 @@ namespace Trippio.Api.Controllers.Payment
                     return Unauthorized(new { message = "User not authenticated" });
                 }
                 
-                if (userIdClaim.StartsWith("auth0|", StringComparison.OrdinalIgnoreCase))
-                {
-                    userIdClaim = userIdClaim.Split('|')[1];
-                }
+                Guid authenticatedUserId;
                 
-                if (!Guid.TryParse(userIdClaim, out var authenticatedUserId))
-                {
-                _logger.LogWarning("Invalid user id claim format: {ClaimValue}", userIdClaim);
-                return StatusCode(500, new
-                {
-                message = "Invalid user ID format in authentication token",
-                claimValue = userIdClaim
-                });
-                }
+                if (Guid.TryParse(userIdClaim, out var parsedGuid))
+        {
+            authenticatedUserId = parsedGuid;
+        }
+        else
+        {
+            
+            _logger.LogWarning("Invalid user id claim format (likely username): {UserIdClaim}", userIdClaim);
+
+            var user = await _userService.GetByUsernameAsync(userIdClaim);
+            if (user == null)
+            {
+                _logger.LogWarning("User with username {UserName} not found", userIdClaim);
+                return StatusCode(403, new { message = "User not authorized" });
+            }
+
+            authenticatedUserId = user.Id;
+        }
                 // var authenticatedUserId = Guid.Parse(userIdClaim);
                 
                 // Check if user is requesting their own payments
