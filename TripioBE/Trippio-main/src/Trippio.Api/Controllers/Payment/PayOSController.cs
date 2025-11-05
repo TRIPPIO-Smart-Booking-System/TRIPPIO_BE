@@ -71,11 +71,20 @@ namespace Trippio.Api.Controllers.Payment
 
                 // Get user ID from JWT token
                 var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                    ?? User.FindFirst("sub")?.Value;
+                    ?? User.FindFirst("sub")?.Value
+                    ?? User.FindFirst("userId")?.Value
+                    ?? User.FindFirst("id")?.Value;
                 
                 if (string.IsNullOrEmpty(userIdClaim))
                 {
                     return Unauthorized(new { message = "User not authenticated" });
+                }
+
+                // Validate user ID format (optional - for logging/tracking purposes)
+                if (!Guid.TryParse(userIdClaim, out var userId))
+                {
+                    _logger.LogWarning("Invalid user ID format in JWT token: {UserIdClaim}", userIdClaim);
+                    // Continue anyway - userId is just for logging
                 }
 
                 // Create payment data for PayOS
@@ -180,7 +189,7 @@ namespace Trippio.Api.Controllers.Payment
         /// <response code="401">Unauthorized - User not authenticated</response>
         /// <response code="403">Forbidden - User can only view their own payments</response>
         /// <response code="500">Internal server error</response>
-        [HttpGet("user/{userId}")]
+        [HttpGet("user/{userId:guid}")]
         [Authorize]
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
@@ -194,14 +203,21 @@ namespace Trippio.Api.Controllers.Payment
 
                 // Get authenticated user ID from JWT token
                 var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                    ?? User.FindFirst("sub")?.Value;
+                    ?? User.FindFirst("sub")?.Value
+                    ?? User.FindFirst("userId")?.Value
+                    ?? User.FindFirst("id")?.Value;
                 
                 if (string.IsNullOrEmpty(userIdClaim))
                 {
                     return Unauthorized(new { message = "User not authenticated" });
                 }
 
-                var authenticatedUserId = Guid.Parse(userIdClaim);
+                // Try to parse the user ID as Guid
+                if (!Guid.TryParse(userIdClaim, out var authenticatedUserId))
+                {
+                    _logger.LogError("Invalid user ID format in JWT token: {UserIdClaim}", userIdClaim);
+                    return BadRequest(new { message = "Invalid user ID format in token" });
+                }
 
                 // Check if user is requesting their own payments
                 // TODO: Add role check - Admin can view any user's payments
