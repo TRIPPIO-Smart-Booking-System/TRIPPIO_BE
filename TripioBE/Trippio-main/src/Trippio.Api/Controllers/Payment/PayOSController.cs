@@ -180,7 +180,7 @@ namespace Trippio.Api.Controllers.Payment
         /// <response code="401">Unauthorized - User not authenticated</response>
         /// <response code="403">Forbidden - User can only view their own payments</response>
         /// <response code="500">Internal server error</response>
-        [HttpGet("user/{userId:guid}")]
+        [HttpGet("user/{userId}")]
         [Authorize]
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
@@ -194,7 +194,7 @@ namespace Trippio.Api.Controllers.Payment
 
                 // Get authenticated user ID from JWT token
                 var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                    ?? User.FindFirst("id")?.Value;
+                    ?? User.FindFirst("sub")?.Value;
                 
                 if (string.IsNullOrEmpty(userIdClaim))
                 {
