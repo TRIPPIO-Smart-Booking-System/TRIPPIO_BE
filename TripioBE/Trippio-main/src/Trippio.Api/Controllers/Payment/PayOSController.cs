@@ -214,11 +214,11 @@ namespace Trippio.Api.Controllers.Payment
                     return Unauthorized(new { message = "User not authenticated" });
                 }
                 
-                Guid effectiveUserId;
+                Guid authenticatedUserId;
                 
                 if (Guid.TryParse(userIdClaim, out var parsedGuid))
         {
-            effectiveUserId = parsedGuid;
+            authenticatedUserId = parsedGuid;
         }
         else
         {
