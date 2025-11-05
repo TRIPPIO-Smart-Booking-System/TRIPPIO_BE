@@ -214,25 +214,17 @@ namespace Trippio.Api.Controllers.Payment
                     return Unauthorized(new { message = "User not authenticated" });
                 }
                 
-                Guid authenticatedUserId;
+                Guid effectiveUserId;
                 
                 if (Guid.TryParse(userIdClaim, out var parsedGuid))
         {
-            authenticatedUserId = parsedGuid;
+            effectiveUserId = parsedGuid;
         }
         else
         {
             
-            _logger.LogWarning("Invalid user id claim format (likely username): {UserIdClaim}", userIdClaim);
-
-            var user = await _userService.GetByUsernameAsync(userIdClaim);
-            if (user == null)
-            {
-                _logger.LogWarning("User with username {UserName} not found", userIdClaim);
-                return StatusCode(403, new { message = "User not authorized" });
-            }
-
-            authenticatedUserId = user.Id;
+            _logger.LogWarning("Invalid user id claim format: {UserIdClaim}", userIdClaim);
+            effectiveUserId = userId; // fallback: lấy userId từ route
         }
                 // var authenticatedUserId = Guid.Parse(userIdClaim);
                 
