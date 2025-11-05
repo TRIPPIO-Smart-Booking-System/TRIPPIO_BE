@@ -194,7 +194,7 @@ namespace Trippio.Api.Controllers.Payment
 
                 // Get authenticated user ID from JWT token
                 var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                    ?? User.FindFirst("sub")?.Value;
+                    ?? User.FindFirst("id")?.Value;
                 
                 if (string.IsNullOrEmpty(userIdClaim))
                 {
