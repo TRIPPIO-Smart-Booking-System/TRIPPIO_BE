@@ -70,10 +70,11 @@ namespace Trippio.Api.Controllers.Payment
                 }
 
                 // Get user ID from JWT token
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                    ?? User.FindFirst("sub")?.Value
+                // Check "id" claim first (this contains the actual Guid userId)
+                var userIdClaim = User.FindFirst("id")?.Value
                     ?? User.FindFirst("userId")?.Value
-                    ?? User.FindFirst("id")?.Value;
+                    ?? User.FindFirst("sub")?.Value
+                    ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 
                 if (string.IsNullOrEmpty(userIdClaim))
                 {
@@ -202,10 +203,11 @@ namespace Trippio.Api.Controllers.Payment
                 _logger.LogInformation("Getting payments for UserId: {UserId}", userId);
 
                 // Get authenticated user ID from JWT token
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                    ?? User.FindFirst("sub")?.Value
+                // Check "id" claim first (this contains the actual Guid userId)
+                var userIdClaim = User.FindFirst("id")?.Value
                     ?? User.FindFirst("userId")?.Value
-                    ?? User.FindFirst("id")?.Value;
+                    ?? User.FindFirst("sub")?.Value
+                    ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 
                 if (string.IsNullOrEmpty(userIdClaim))
                 {
