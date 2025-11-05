@@ -207,14 +207,25 @@ namespace Trippio.Api.Controllers.Payment
                 // Get authenticated user ID from JWT token
                 var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
                     ?? User.FindFirst("sub")?.Value;
+                    if (string.IsNullOrEmpty(userIdClaim))
+                  {
+                   userIdClaim = User.Claims.FirstOrDefault(c => 
+                   string.Equals(c.Type, "id", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(c.Type, "user_id", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(c.Type, "uid", StringComparison.OrdinalIgnoreCase))?.Value;
+                  }
                 
                 if (string.IsNullOrEmpty(userIdClaim))
                 {
                     return Unauthorized(new { message = "User not authenticated" });
                 }
-
-                var authenticatedUserId = Guid.Parse(userIdClaim);
-
+                if (!Guid.TryParse(userIdClaim, out var authenticatedUserId))
+                {
+                _logger.LogWarning("Invalid user id claim format: {ClaimValue}", userIdClaim);
+                return Unauthorized(new { message = "Invalid user id in token" });
+                }
+                // var authenticatedUserId = Guid.Parse(userIdClaim);
+                
                 // Check if user is requesting their own payments
                 // TODO: Add role check - Admin can view any user's payments
                 // var isAdmin = User.IsInRole("Admin");
