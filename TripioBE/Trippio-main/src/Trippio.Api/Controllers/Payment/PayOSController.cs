@@ -250,10 +250,10 @@ namespace Trippio.Api.Controllers.Payment
         }
 
         /// <summary>
-        /// Get payment information by order code from database
+        /// Get payment information by order code
         /// </summary>
         /// <param name="orderCode">Order code to query</param>
-        /// <returns>Payment information with full details</returns>
+        /// <returns>Payment information</returns>
         /// <response code="200">Payment information retrieved successfully</response>
         /// <response code="404">Payment not found</response>
         [HttpGet("realmoney/{orderCode}")]
@@ -264,54 +264,12 @@ namespace Trippio.Api.Controllers.Payment
         {
             try
             {
-                _logger.LogInformation("Getting payment info from database for OrderCode: {OrderCode}", orderCode);
-
-                // FIXED: Query from database instead of PayOS SDK to get all payment data
-                var result = await _paymentService.GetByOrderCodeAsync(orderCode);
-                
-                if (result.Code == 404)
-                {
-                    _logger.LogWarning("Payment not found in database for OrderCode: {OrderCode}", orderCode);
-                    return NotFound(new { message = result.Message });
-                }
-
-                _logger.LogInformation("Payment info retrieved for OrderCode: {OrderCode}", orderCode);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting payment info for OrderCode: {OrderCode}", orderCode);
-                return StatusCode(500, new 
-                { 
-                    message = "Failed to retrieve payment", 
-                    error = ex.Message 
-                });
-            }
-        }
-
-        /// <summary>
-        /// Get payment link status from PayOS (for verification only)
-        /// Use this to verify with PayOS if needed
-        /// </summary>
-        /// <param name="orderCode">Order code to query</param>
-        /// <returns>Payment link information from PayOS</returns>
-        /// <response code="200">Payment link info retrieved successfully</response>
-        /// <response code="404">Payment link not found in PayOS</response>
-        [HttpGet("realmoney/{orderCode}/payos-verify")]
-        [Authorize]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(404)]
-        public async Task<IActionResult> VerifyPayOSLinkStatus(long orderCode)
-        {
-            try
-            {
-                _logger.LogInformation("Verifying PayOS link status for OrderCode: {OrderCode}", orderCode);
+                _logger.LogInformation("Getting payment info for OrderCode: {OrderCode}", orderCode);
 
                 var paymentInfo = await _payOS.getPaymentLinkInformation(orderCode);
 
                 return Ok(new
                 {
-                    message = "PayOS link status (for verification only)",
                     orderCode = paymentInfo.orderCode,
                     amount = paymentInfo.amount,
                     status = paymentInfo.status,
@@ -320,12 +278,8 @@ namespace Trippio.Api.Controllers.Payment
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error verifying PayOS link status for OrderCode: {OrderCode}", orderCode);
-                return NotFound(new 
-                { 
-                    message = "Payment link not found in PayOS", 
-                    error = ex.Message 
-                });
+                _logger.LogError(ex, "Error getting payment info for OrderCode: {OrderCode}", orderCode);
+                return NotFound(new { message = "Payment not found", error = ex.Message });
             }
         }
 
