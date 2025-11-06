@@ -103,6 +103,24 @@ namespace Trippio.Api.Controllers
         }
 
         /// <summary>
+        /// Get all reviews (with customer and order information)
+        /// </summary>
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetAllReviews()
+        {
+            try
+            {
+                var reviews = await _reviewService.GetAllReviewsAsync();
+                return Ok(new { data = reviews, count = reviews.Count() });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while retrieving reviews", error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Get a review by ID
         /// </summary>
         [HttpGet("{reviewId}")]

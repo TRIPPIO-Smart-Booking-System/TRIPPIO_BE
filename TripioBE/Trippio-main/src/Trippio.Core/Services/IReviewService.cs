@@ -8,6 +8,7 @@ namespace Trippio.Core.Services
         Task<ReviewDto?> UpdateReviewAsync(int reviewId, UpdateReviewDto request, Guid customerId);
         Task<bool> DeleteReviewAsync(int reviewId, Guid customerId);
         Task<ReviewDto?> GetReviewByIdAsync(int reviewId);
+        Task<IEnumerable<ReviewDto>> GetAllReviewsAsync();
         Task<IEnumerable<ReviewDto>> GetReviewsByOrderIdAsync(int orderId);
         Task<IEnumerable<ReviewDto>> GetReviewsByCustomerIdAsync(Guid customerId);
         Task<bool> CanCustomerReviewOrderAsync(int orderId, Guid customerId);
