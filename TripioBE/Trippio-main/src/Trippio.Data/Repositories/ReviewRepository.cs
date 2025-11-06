@@ -11,6 +11,16 @@ namespace Trippio.Data.Repositories
         {
         }
 
+        public async Task<IEnumerable<Review>> GetAllReviewsAsync()
+        {
+            return await _context.Reviews
+                .Include(r => r.Customer)
+                .Include(r => r.Order)
+                .AsSplitQuery()
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+        }
+
         public async Task<IEnumerable<Review>> GetReviewsByOrderIdAsync(int orderId)
         {
             return await _context.Reviews

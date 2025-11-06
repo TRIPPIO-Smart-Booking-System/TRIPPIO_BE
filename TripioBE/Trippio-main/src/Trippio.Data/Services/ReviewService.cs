@@ -105,6 +105,12 @@ namespace Trippio.Data.Services
             return review == null ? null : _mapper.Map<ReviewDto>(review);
         }
 
+        public async Task<IEnumerable<ReviewDto>> GetAllReviewsAsync()
+        {
+            var reviews = await _reviewRepository.GetAllReviewsAsync();
+            return _mapper.Map<IEnumerable<ReviewDto>>(reviews);
+        }
+
         public async Task<IEnumerable<ReviewDto>> GetReviewsByOrderIdAsync(int orderId)
         {
             var reviews = await _reviewRepository.GetReviewsByOrderIdAsync(orderId);

@@ -17,6 +17,16 @@ namespace Trippio.Api.Controllers
             _orders = orders;
         }
 
+        /// <summary>
+        /// Get all orders (Admin/User feature)
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetAllOrders()
+        {
+            var result = await _orders.GetAllAsync();
+            return StatusCode(result.Code, result);
+        }
+
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request)
         {

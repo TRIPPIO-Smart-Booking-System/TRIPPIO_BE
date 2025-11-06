@@ -35,6 +35,20 @@ namespace Trippio.Data.Service
             _basket = basket;
         }
 
+        public async Task<BaseResponse<IEnumerable<OrderDto>>> GetAllAsync()
+        {
+            var data = await _orderRepo.Query()
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Booking)
+                .Include(o => o.Payments)
+                .AsSplitQuery()
+                .OrderByDescending(o => o.OrderDate)
+                .ProjectTo<OrderDto>(_mapper.ConfigurationProvider)
+                .ToListAsync();
+
+            return BaseResponse<IEnumerable<OrderDto>>.Success(data, "All orders retrieved successfully");
+        }
+
         public async Task<BaseResponse<IEnumerable<OrderDto>>> GetByUserIdAsync(Guid userId)
         {
             var data = await _orderRepo.Query()

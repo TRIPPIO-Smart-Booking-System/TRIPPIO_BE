@@ -7,6 +7,7 @@ namespace Trippio.Core.Services
 {
     public interface IOrderService
     {
+        Task<BaseResponse<IEnumerable<OrderDto>>> GetAllAsync();
         Task<BaseResponse<IEnumerable<OrderDto>>> GetByUserIdAsync(Guid userId);
         Task<BaseResponse<OrderDto>> GetByIdAsync(int id);
         Task<BaseResponse<IEnumerable<OrderDto>>> GetByStatusAsync(string status);
