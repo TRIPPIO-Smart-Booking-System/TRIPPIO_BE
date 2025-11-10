@@ -41,8 +41,12 @@ namespace Trippio.Api.Controllers.AdminApi
 
         [HttpGet("paging")]
         [Authorize(Users.View)]
-        public async Task<ActionResult<PageResult<UserDto>>> GetAllUsersPaging(string? keyword, int pageIndex, int pageSize)
+        public async Task<ActionResult<PageResult<UserDto>>> GetAllUsersPaging(string? keyword, int pageIndex = 1, int pageSize = 10)
         {
+            // Validation: ensure valid page index and size
+            if (pageIndex < 1) pageIndex = 1;
+            if (pageSize < 1 || pageSize > 100) pageSize = 10;
+
             var query = _userManager.Users;
             if (!string.IsNullOrEmpty(keyword))
             {
