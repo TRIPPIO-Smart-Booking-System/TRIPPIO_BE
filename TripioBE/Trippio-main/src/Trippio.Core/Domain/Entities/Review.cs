@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Trippio.Core.Domain.Identity;
 
 namespace Trippio.Core.Domain.Entities
 {
@@ -13,7 +14,7 @@ namespace Trippio.Core.Domain.Entities
         public int OrderId { get; set; }
 
         [Required]
-        public Guid CustomerId { get; set; }
+        public Guid UserId { get; set; }
 
         [Required]
         [Range(1, 5, ErrorMessage = "Rating must be between 1 and 5")]
@@ -29,7 +30,7 @@ namespace Trippio.Core.Domain.Entities
         [ForeignKey("OrderId")]
         public virtual Order Order { get; set; } = null!;
 
-        [ForeignKey("CustomerId")]
-        public virtual Customer Customer { get; set; } = null!;
+        [ForeignKey("UserId")]
+        public virtual AppUser User { get; set; } = null!;
     }
 }

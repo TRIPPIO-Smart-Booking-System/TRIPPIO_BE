@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Trippio.Core.Domain.Entities;
 
 namespace Trippio.Core.Domain.Identity
 {
@@ -45,6 +46,9 @@ namespace Trippio.Core.Domain.Identity
         public DateTime? PasswordResetOtpExpiry { get; set; }
 
         public bool IsFirstLogin { get; set; } = true;
+
+        // Navigation Properties
+        public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
 
         public string? GetFullName() => $"{FirstName} {LastName}";
     }

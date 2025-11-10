@@ -30,6 +30,5 @@ namespace Trippio.Core.Domain.Entities
         public virtual AppUser User { get; set; } = null!;
 
         public virtual ICollection<Address> Addresses { get; set; } = new List<Address>();
-        public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
     }
 }

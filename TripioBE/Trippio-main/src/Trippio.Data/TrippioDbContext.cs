@@ -248,14 +248,14 @@ namespace Trippio.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<Review>()
-                .HasOne(r => r.Customer)
-                .WithMany(c => c.Reviews)
-                .HasForeignKey(r => r.CustomerId)
+                .HasOne(r => r.User)
+                .WithMany(u => u.Reviews)
+                .HasForeignKey(r => r.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Ensure one review per customer per order
+            // Ensure one review per user per order
             builder.Entity<Review>()
-                .HasIndex(r => new { r.OrderId, r.CustomerId })
+                .HasIndex(r => new { r.OrderId, r.UserId })
                 .IsUnique();
 
         }
