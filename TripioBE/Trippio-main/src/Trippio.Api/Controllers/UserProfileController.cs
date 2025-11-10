@@ -89,7 +89,7 @@ namespace Trippio.Api.Controllers
         /// </summary>
         [HttpPost("avatar")]
         [Consumes("multipart/form-data")]
-        public async Task<ActionResult> UpdateAvatar([FromForm] IFormFile file)
+        public async Task<ActionResult> UpdateAvatar([FromForm] IFormFileCollection? files)
         {
             try
             {
@@ -104,6 +104,15 @@ namespace Trippio.Api.Controllers
                 {
                     return NotFound(new { message = "User not found." });
                 }
+
+                // Validate file collection
+                if (files == null || files.Count == 0)
+                {
+                    return BadRequest(new { message = "Please upload an image file." });
+                }
+
+                // Get only the first file
+                var file = files[0];
 
                 // Validate file
                 if (file == null || file.Length == 0)
