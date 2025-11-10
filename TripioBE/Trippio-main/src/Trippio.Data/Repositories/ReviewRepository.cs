@@ -14,7 +14,7 @@ namespace Trippio.Data.Repositories
         public async Task<IEnumerable<Review>> GetAllReviewsAsync()
         {
             return await _context.Reviews
-                .Include(r => r.Customer)
+                .Include(r => r.User)
                 .Include(r => r.Order)
                 .AsSplitQuery()
                 .OrderByDescending(r => r.CreatedAt)
@@ -24,33 +24,33 @@ namespace Trippio.Data.Repositories
         public async Task<IEnumerable<Review>> GetReviewsByOrderIdAsync(int orderId)
         {
             return await _context.Reviews
-                .Include(r => r.Customer)
+                .Include(r => r.User)
                 .Where(r => r.OrderId == orderId)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Review>> GetReviewsByCustomerIdAsync(Guid customerId)
+        public async Task<IEnumerable<Review>> GetReviewsByUserIdAsync(Guid userId)
         {
             return await _context.Reviews
                 .Include(r => r.Order)
-                .Where(r => r.CustomerId == customerId)
+                .Where(r => r.UserId == userId)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
         }
 
-        public async Task<Review?> GetReviewByOrderAndCustomerAsync(int orderId, Guid customerId)
+        public async Task<Review?> GetReviewByOrderAndUserAsync(int orderId, Guid userId)
         {
             return await _context.Reviews
-                .Include(r => r.Customer)
+                .Include(r => r.User)
                 .Include(r => r.Order)
-                .FirstOrDefaultAsync(r => r.OrderId == orderId && r.CustomerId == customerId);
+                .FirstOrDefaultAsync(r => r.OrderId == orderId && r.UserId == userId);
         }
 
-        public async Task<bool> HasCustomerReviewedOrderAsync(int orderId, Guid customerId)
+        public async Task<bool> HasUserReviewedOrderAsync(int orderId, Guid userId)
         {
             return await _context.Reviews
-                .AnyAsync(r => r.OrderId == orderId && r.CustomerId == customerId);
+                .AnyAsync(r => r.OrderId == orderId && r.UserId == userId);
         }
     }
 }

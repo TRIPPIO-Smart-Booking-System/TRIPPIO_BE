@@ -24,16 +24,16 @@ namespace Trippio.Data.Services
             _mapper = mapper;
         }
 
-        public async Task<ReviewDto?> CreateReviewAsync(CreateReviewRequest request, Guid customerId)
+        public async Task<ReviewDto?> CreateReviewAsync(CreateReviewRequest request, Guid userId)
         {
-            // Check if customer can review this order
-            if (!await CanCustomerReviewOrderAsync(request.OrderId, customerId))
+            // Check if user can review this order
+            if (!await CanUserReviewOrderAsync(request.OrderId, userId))
             {
                 return null;
             }
 
-            // Check if customer has already reviewed this order
-            if (await _reviewRepository.HasCustomerReviewedOrderAsync(request.OrderId, customerId))
+            // Check if user has already reviewed this order
+            if (await _reviewRepository.HasUserReviewedOrderAsync(request.OrderId, userId))
             {
                 throw new InvalidOperationException("You have already reviewed this order.");
             }
@@ -41,7 +41,7 @@ namespace Trippio.Data.Services
             var review = new Review
             {
                 OrderId = request.OrderId,
-                CustomerId = customerId,
+                UserId = userId,
                 Rating = request.Rating,
                 Comment = request.Comment,
                 CreatedAt = DateTime.UtcNow
@@ -52,17 +52,17 @@ namespace Trippio.Data.Services
 
             // Load navigation properties
             var createdReview = await _context.Reviews
-                .Include(r => r.Customer)
+                .Include(r => r.User)
                 .Include(r => r.Order)
                 .FirstOrDefaultAsync(r => r.Id == review.Id);
 
             return _mapper.Map<ReviewDto>(createdReview);
         }
 
-        public async Task<ReviewDto?> UpdateReviewAsync(int reviewId, UpdateReviewDto request, Guid customerId)
+        public async Task<ReviewDto?> UpdateReviewAsync(int reviewId, UpdateReviewDto request, Guid userId)
         {
             var review = await _reviewRepository.GetByIdAsync(reviewId);
-            if (review == null || review.CustomerId != customerId)
+            if (review == null || review.UserId != userId)
             {
                 return null;
             }
@@ -74,17 +74,17 @@ namespace Trippio.Data.Services
 
             // Load navigation properties
             var updatedReview = await _context.Reviews
-                .Include(r => r.Customer)
+                .Include(r => r.User)
                 .Include(r => r.Order)
                 .FirstOrDefaultAsync(r => r.Id == reviewId);
 
             return _mapper.Map<ReviewDto>(updatedReview);
         }
 
-        public async Task<bool> DeleteReviewAsync(int reviewId, Guid customerId)
+        public async Task<bool> DeleteReviewAsync(int reviewId, Guid userId)
         {
             var review = await _reviewRepository.GetByIdAsync(reviewId);
-            if (review == null || review.CustomerId != customerId)
+            if (review == null || review.UserId != userId)
             {
                 return false;
             }
@@ -98,7 +98,7 @@ namespace Trippio.Data.Services
         public async Task<ReviewDto?> GetReviewByIdAsync(int reviewId)
         {
             var review = await _context.Reviews
-                .Include(r => r.Customer)
+                .Include(r => r.User)
                 .Include(r => r.Order)
                 .FirstOrDefaultAsync(r => r.Id == reviewId);
 
@@ -117,13 +117,13 @@ namespace Trippio.Data.Services
             return _mapper.Map<IEnumerable<ReviewDto>>(reviews);
         }
 
-        public async Task<IEnumerable<ReviewDto>> GetReviewsByCustomerIdAsync(Guid customerId)
+        public async Task<IEnumerable<ReviewDto>> GetReviewsByUserIdAsync(Guid userId)
         {
-            var reviews = await _reviewRepository.GetReviewsByCustomerIdAsync(customerId);
+            var reviews = await _reviewRepository.GetReviewsByUserIdAsync(userId);
             return _mapper.Map<IEnumerable<ReviewDto>>(reviews);
         }
 
-        public async Task<bool> CanCustomerReviewOrderAsync(int orderId, Guid customerId)
+        public async Task<bool> CanUserReviewOrderAsync(int orderId, Guid userId)
         {
             // Get the order with its payments
             var order = await _context.Orders
@@ -135,17 +135,8 @@ namespace Trippio.Data.Services
                 return false;
             }
 
-            // Check if the order belongs to a user associated with this customer
-            var customer = await _context.Customers
-                .FirstOrDefaultAsync(c => c.Id == customerId);
-
-            if (customer == null)
-            {
-                return false;
-            }
-
-            // Check if the order belongs to the customer's user
-            if (order.UserId != customer.UserId)
+            // Check if the order belongs to this user
+            if (order.UserId != userId)
             {
                 return false;
             }

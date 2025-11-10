@@ -7,8 +7,8 @@ namespace Trippio.Core.Repositories
     {
         Task<IEnumerable<Review>> GetAllReviewsAsync();
         Task<IEnumerable<Review>> GetReviewsByOrderIdAsync(int orderId);
-        Task<IEnumerable<Review>> GetReviewsByCustomerIdAsync(Guid customerId);
-        Task<Review?> GetReviewByOrderAndCustomerAsync(int orderId, Guid customerId);
-        Task<bool> HasCustomerReviewedOrderAsync(int orderId, Guid customerId);
+        Task<IEnumerable<Review>> GetReviewsByUserIdAsync(Guid userId);
+        Task<Review?> GetReviewByOrderAndUserAsync(int orderId, Guid userId);
+        Task<bool> HasUserReviewedOrderAsync(int orderId, Guid userId);
     }
 }
