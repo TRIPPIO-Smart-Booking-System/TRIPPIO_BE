@@ -2,11 +2,11 @@ using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.IO;
 using System.Security.Claims;
 using Trippio.Api.Extensions;
 using Trippio.Core.Domain.Identity;
 using Trippio.Core.Models.System;
-using System.IO;
 
 namespace Trippio.Api.Controllers
 {
@@ -84,118 +84,96 @@ namespace Trippio.Api.Controllers
         }
 
         /// <summary>
-        /// Update current user's avatar by uploading an image file
+        /// Upload and update current user's avatar
+        /// POST /api/user/avatar
         /// </summary>
+        [HttpPut("avatar")]
         [HttpPost("avatar")]
         public async Task<ActionResult> UpdateAvatar([FromForm] IFormFile file)
         {
-            if (file == null || file.Length == 0)
-            {
-                return BadRequest(new { message = "File is required" });
-            }
-
-            // Validate file type
-            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
-            var fileExtension = Path.GetExtension(file.FileName).ToLower();
-            if (!allowedExtensions.Contains(fileExtension))
-            {
-                return BadRequest(new { message = $"File type not allowed. Allowed types: {string.Join(", ", allowedExtensions)}" });
-            }
-
-            // Validate file size (max 5MB)
-            const long maxFileSize = 5 * 1024 * 1024; // 5MB
-            if (file.Length > maxFileSize)
-            {
-                return BadRequest(new { message = "File size exceeds 5MB limit" });
-            }
-
-            var userId = User.GetUserId();
-            if (userId == Guid.Empty)
-            {
-                return Unauthorized(new { message = "User ID not found in token." });
-            }
-
-            var user = await _userManager.FindByIdAsync(userId.ToString());
-            if (user == null)
-            {
-                return NotFound(new { message = "User not found." });
-            }
-
             try
             {
+                var userId = User.GetUserId();
+                if (userId == Guid.Empty)
+                {
+                    return Unauthorized(new { message = "User ID not found in token." });
+                }
+
+                var user = await _userManager.FindByIdAsync(userId.ToString());
+                if (user == null)
+                {
+                    return NotFound(new { message = "User not found." });
+                }
+
+                // Validate file
+                if (file == null || file.Length == 0)
+                {
+                    return BadRequest(new { message = "File is required." });
+                }
+
+                // Validate file type
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+                var fileExtension = Path.GetExtension(file.FileName).ToLower();
+                if (!allowedExtensions.Contains(fileExtension))
+                {
+                    return BadRequest(new { message = "Only JPG, PNG, GIF, and WebP files are allowed." });
+                }
+
+                // Validate file size (max 5MB)
+                const long maxFileSize = 5 * 1024 * 1024; // 5MB
+                if (file.Length > maxFileSize)
+                {
+                    return BadRequest(new { message = "File size must not exceed 5MB." });
+                }
+
                 // Create uploads directory if it doesn't exist
-                var uploadsDir = Path.Combine("wwwroot", "uploads", "avatars");
+                var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "avatars");
                 if (!Directory.Exists(uploadsDir))
                 {
                     Directory.CreateDirectory(uploadsDir);
                 }
 
                 // Generate unique filename
-                var fileName = $"{userId}_{DateTime.Now:yyyyMMddHHmmss}{fileExtension}";
+                var fileName = $"{userId}_{DateTime.UtcNow:yyyyMMddHHmmss}{fileExtension}";
                 var filePath = Path.Combine(uploadsDir, fileName);
 
-                // Save file
+                // Save file to disk
                 using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     await file.CopyToAsync(stream);
                 }
 
-                // Update user avatar URL
+                // Build avatar URL
                 var avatarUrl = $"/uploads/avatars/{fileName}";
+
+                // Update user's avatar
                 user.Avatar = avatarUrl;
                 var result = await _userManager.UpdateAsync(user);
 
                 if (!result.Succeeded)
                 {
-                    // Delete uploaded file if user update fails
+                    // Delete file if database update fails
                     if (System.IO.File.Exists(filePath))
                     {
                         System.IO.File.Delete(filePath);
                     }
-                    return BadRequest(new { message = "Failed to update avatar", errors = result.Errors });
+
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    return BadRequest(new { message = "Failed to update avatar in database.", errors });
                 }
 
                 return Ok(new
                 {
-                    message = "Avatar uploaded successfully",
+                    message = "Avatar uploaded and updated successfully",
                     avatar = avatarUrl,
-                    fileName = fileName
+                    fileName = fileName,
+                    userId = userId
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Error uploading file", error = ex.Message });
+                return StatusCode(500, new { message = "An error occurred while uploading the avatar.", error = ex.Message });
             }
-        }
-
-        /// <summary>
-        /// Update current user's avatar with URL (legacy method)
-        /// </summary>
-        [HttpPut("avatar")]
-        [Obsolete("Use POST /api/user/avatar with file upload instead")]
-        public async Task<ActionResult> UpdateAvatarUrl([FromBody] UpdateAvatarRequest request)
-        {
-            var userId = User.GetUserId();
-            if (userId == Guid.Empty)
-            {
-                return Unauthorized(new { message = "User ID not found in token." });
-            }
-
-            var user = await _userManager.FindByIdAsync(userId.ToString());
-            if (user == null)
-            {
-                return NotFound(new { message = "User not found." });
-            }
-
-            user.Avatar = request.AvatarUrl;
-            var result = await _userManager.UpdateAsync(user);
-
-            if (!result.Succeeded)
-            {
-                return BadRequest(new { message = "Failed to update avatar", errors = result.Errors });
-            }
-
-            return Ok(new { message = "Avatar updated successfully", avatar = user.Avatar });
         }
     }
 
