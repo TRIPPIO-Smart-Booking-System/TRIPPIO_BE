@@ -83,24 +83,24 @@ namespace Trippio.Api.Controllers
             });
         }
 
+       
         /// <summary>
         /// Upload và cập nhật avatar người dùng hiện tại.
-        /// Nhận multipart/form-data chứa 1 file hình.
-        /// Hỗ trợ: JPG, PNG, GIF, WebP. Giới hạn: 5MB.
-        /// File lưu tại: wwwroot/uploads/avatars/
+        /// Chỉ cần chọn 1 file, backend xử lý.
         /// </summary>
         [HttpPost("avatar")]
         [Consumes("multipart/form-data")]
-        [ProducesResponseType(typeof(UploadAvatarResponse), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult> UpdateAvatar([FromForm] UploadAvatarDto request)
+        [ProducesResponseType(typeof(UploadAvatarResponse), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<ActionResult> UpdateAvatar([FromForm] IFormFile file)
         {
             try
             {
-                var file = request.File;
+                if (file == null || file.Length == 0)
+                    return BadRequest(new { message = "Vui lòng upload một hình ảnh." });
 
                 var userId = User.GetUserId();
                 if (userId == Guid.Empty)
@@ -110,40 +110,32 @@ namespace Trippio.Api.Controllers
                 if (user == null)
                     return NotFound(new { message = "User not found." });
 
-                // Kiểm tra file tồn tại
-                if (file == null || file.Length == 0)
-                    return BadRequest(new { message = "Vui lòng upload một hình ảnh." });
-
                 // Kiểm tra loại file
                 var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
                 var fileExtension = Path.GetExtension(file.FileName).ToLower();
                 if (!allowedExtensions.Contains(fileExtension))
-                {
                     return BadRequest(new
                     {
                         message = "Chỉ chấp nhận định dạng JPG, PNG, GIF, WebP.",
                         supportedFormats = string.Join(", ", allowedExtensions)
                     });
-                }
 
                 // Kiểm tra kích thước file
                 const long maxFileSize = 5 * 1024 * 1024; // 5MB
                 if (file.Length > maxFileSize)
-                {
                     return BadRequest(new
                     {
                         message = "Dung lượng file vượt quá giới hạn 5MB.",
                         fileSizeMB = file.Length / (1024.0 * 1024.0),
                         maxSizeMB = maxFileSize / (1024.0 * 1024.0)
                     });
-                }
 
                 // Tạo thư mục upload nếu chưa có
                 var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "avatars");
                 if (!Directory.Exists(uploadsDir))
                     Directory.CreateDirectory(uploadsDir);
 
-                // Đặt tên file duy nhất theo userId + timestamp
+                // Tên file duy nhất theo userId + timestamp
                 var fileName = $"{userId}_{DateTime.UtcNow:yyyyMMddHHmmss}{fileExtension}";
                 var filePath = Path.Combine(uploadsDir, fileName);
 
@@ -153,7 +145,7 @@ namespace Trippio.Api.Controllers
                     await file.CopyToAsync(stream);
                 }
 
-                // Tạo URL public cho avatar
+                // URL public
                 var avatarUrl = $"/uploads/avatars/{fileName}";
 
                 // Cập nhật user avatar
@@ -162,16 +154,11 @@ namespace Trippio.Api.Controllers
 
                 if (!result.Succeeded)
                 {
-                    // Rollback nếu update DB lỗi
                     if (System.IO.File.Exists(filePath))
                         System.IO.File.Delete(filePath);
 
                     var errors = string.Join("; ", result.Errors.Select(e => e.Description));
-                    return BadRequest(new
-                    {
-                        message = "Không thể cập nhật avatar vào cơ sở dữ liệu.",
-                        errors
-                    });
+                    return BadRequest(new { message = "Không thể cập nhật avatar.", errors });
                 }
 
                 return Ok(new UploadAvatarResponse
@@ -186,64 +173,18 @@ namespace Trippio.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    message = "Đã xảy ra lỗi khi upload avatar.",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi upload avatar.", error = ex.Message });
             }
         }
     }
 
-    public class UpdateAvatarRequest
-    {
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Avatar URL is required")]
-        [System.ComponentModel.DataAnnotations.MaxLength(500, ErrorMessage = "Avatar URL is too long")]
-        public string AvatarUrl { get; set; } = string.Empty;
-    }
-
-    /// <summary>
-    /// DTO cho upload avatar qua Swagger.
-    /// </summary>
-    public class UploadAvatarDto
-    {
-        [FromForm(Name = "file")]
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Vui lòng chọn 1 file hình để upload.")]
-        public IFormFile File { get; set; } = null!;
-    }
- /// <summary>
-    /// Response DTO for avatar upload
-    /// </summary>
     public class UploadAvatarResponse
     {
-        /// <summary>
-        /// Success message
-        /// </summary>
         public string Message { get; set; } = string.Empty;
-
-        /// <summary>
-        /// URL of the uploaded avatar
-        /// </summary>
         public string AvatarUrl { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Filename of the uploaded avatar
-        /// </summary>
         public string FileName { get; set; } = string.Empty;
-
-        /// <summary>
-        /// User ID who uploaded the avatar
-        /// </summary>
         public Guid UserId { get; set; }
-
-        /// <summary>
-        /// File size in bytes
-        /// </summary>
         public long FileSize { get; set; }
-
-        /// <summary>
-        /// Timestamp when the avatar was uploaded
-        /// </summary>
         public DateTime UploadedAt { get; set; }
     }
 }
