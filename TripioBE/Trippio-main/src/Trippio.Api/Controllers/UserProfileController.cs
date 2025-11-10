@@ -87,8 +87,8 @@ namespace Trippio.Api.Controllers
         /// Upload and update current user's avatar
         /// POST /api/user/avatar
         /// </summary>
-        [HttpPut("avatar")]
         [HttpPost("avatar")]
+        [Consumes("multipart/form-data")]
         public async Task<ActionResult> UpdateAvatar([FromForm] IFormFile file)
         {
             try
