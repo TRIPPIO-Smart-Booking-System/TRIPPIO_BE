@@ -203,12 +203,47 @@ namespace Trippio.Api.Controllers
     }
 
     /// <summary>
-/// DTO cho upload avatar qua Swagger.
-/// </summary>
-public class UploadAvatarDto
-{
-    [FromForm(Name = "file")]
-    [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Vui lòng chọn 1 file hình để upload.")]
-    public IFormFile File { get; set; } = null!;
-}
+    /// DTO cho upload avatar qua Swagger.
+    /// </summary>
+    public class UploadAvatarDto
+    {
+        [FromForm(Name = "file")]
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Vui lòng chọn 1 file hình để upload.")]
+        public IFormFile File { get; set; } = null!;
+    }
+ /// <summary>
+    /// Response DTO for avatar upload
+    /// </summary>
+    public class UploadAvatarResponse
+    {
+        /// <summary>
+        /// Success message
+        /// </summary>
+        public string Message { get; set; } = string.Empty;
+
+        /// <summary>
+        /// URL of the uploaded avatar
+        /// </summary>
+        public string AvatarUrl { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Filename of the uploaded avatar
+        /// </summary>
+        public string FileName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// User ID who uploaded the avatar
+        /// </summary>
+        public Guid UserId { get; set; }
+
+        /// <summary>
+        /// File size in bytes
+        /// </summary>
+        public long FileSize { get; set; }
+
+        /// <summary>
+        /// Timestamp when the avatar was uploaded
+        /// </summary>
+        public DateTime UploadedAt { get; set; }
+    }
 }
