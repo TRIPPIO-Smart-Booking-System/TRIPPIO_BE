@@ -7,6 +7,8 @@ using Trippio.Core.ConfigOptions;
 using Trippio.Core.Models.Payment;
 using Trippio.Core.Services;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Trippio.Api.Controllers.Payment
 {
@@ -114,8 +116,8 @@ namespace Trippio.Api.Controllers.Payment
                     amount: request.Amount,
                     description: request.Description,
                     items: items,
-                    cancelUrl: _settings.CancelUrl,
-                    returnUrl: _settings.ReturnUrl,
+                    cancelUrl: _settings.WebCancelUrl,
+                    returnUrl: _settings.WebReturnUrl,
                     buyerName: request.BuyerName,
                     buyerEmail: request.BuyerEmail,
                     buyerPhone: request.BuyerPhone
@@ -127,17 +129,23 @@ namespace Trippio.Api.Controllers.Payment
                 _logger.LogInformation("PayOS payment link created successfully. CheckoutUrl: {CheckoutUrl}", 
                     createResult.checkoutUrl);
 
-                // TODO: Save payment record to database here
-                // Example:
-                // await _paymentService.CreatePaymentRecordAsync(new PaymentRecord
-                // {
-                //     OrderCode = request.OrderCode,
-                //     UserId = Guid.Parse(userIdClaim),
-                //     Amount = request.Amount,
-                //     Status = "PENDING",
-                //     PaymentLinkId = createResult.paymentLinkId,
-                //     CreatedAt = DateTime.UtcNow
-                // });
+                // ✅ FIXED: Save payment record to database IMMEDIATELY after PayOS returns
+                var createPaymentResult = await _paymentService.CreateAsync(new CreatePaymentRequest
+                {
+                    UserId = Guid.Parse(userIdClaim),
+                    Amount = request.Amount,
+                    PaymentMethod = "PayOS",
+                    PaymentLinkId = createResult.paymentLinkId,
+                    OrderCode = request.OrderCode
+                });
+
+                if (createPaymentResult.Code != 200)
+                {
+                    _logger.LogError("Failed to save payment record to database: {Error}", 
+                        createPaymentResult.Message);
+                    // Don't fail - PayOS link was created successfully, just log the error
+                    // Frontend can retry saving via another endpoint if needed
+                }
 
                 var response = new PayOSPaymentResponse
                 {
@@ -374,6 +382,21 @@ namespace Trippio.Api.Controllers.Payment
                 }
 
                 var payload = webhookData.Data;
+
+                // ✅ FIXED: Verify webhook signature FIRST before processing
+                // This prevents forged webhooks from being processed
+                var signatureData = $"{payload.OrderCode}|{payload.Amount}|{payload.Code}|{payload.Reference}";
+                var expectedSignature = ComputeHmacSha256(signatureData, _settings.ChecksumKey);
+
+                if (string.IsNullOrEmpty(webhookData.Signature) || webhookData.Signature != expectedSignature)
+                {
+                    _logger.LogWarning("Invalid webhook signature received. OrderCode: {OrderCode}. Expected: {Expected}, Got: {Actual}",
+                        payload.OrderCode, expectedSignature, webhookData.Signature ?? "null");
+                    return BadRequest(new { success = false, message = "Invalid webhook signature" });
+                }
+
+                _logger.LogInformation("✅ Webhook signature verified for OrderCode: {OrderCode}", payload.OrderCode);
+
                 long orderCode = payload.OrderCode;
                 int amount = payload.Amount;
                 string code = payload.Code;
@@ -530,6 +553,19 @@ namespace Trippio.Api.Controllers.Payment
                 message = "PayOS webhook endpoint is active",
                 timestamp = DateTime.UtcNow
             });
+        }
+
+        /// <summary>
+        /// Helper method to compute HMAC-SHA256 signature for webhook verification
+        /// Formula: HMACSHA256("{orderCode}|{amount}|{code}|{reference}", checksumKey)
+        /// </summary>
+        private string ComputeHmacSha256(string data, string key)
+        {
+            using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(key)))
+            {
+                var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
+                return BitConverter.ToString(hash).Replace("-", "").ToLower();
+            }
         }
     }
 }
