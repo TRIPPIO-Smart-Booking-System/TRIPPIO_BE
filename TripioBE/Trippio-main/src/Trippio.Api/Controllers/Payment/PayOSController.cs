@@ -77,6 +77,17 @@ namespace Trippio.Api.Controllers.Payment
                 _logger.LogInformation("Creating PayOS payment for OrderCode: {OrderCode}, Amount: {Amount}", 
                     request.OrderCode, request.Amount);
 
+                // Validate orderCode range (PayOS supports up to 6 digits: 1-999999)
+                if (request.OrderCode < 1 || request.OrderCode > 999999)
+                {
+                    _logger.LogWarning("OrderCode {OrderCode} is out of valid range (1-999999)", request.OrderCode);
+                    return BadRequest(new 
+                    { 
+                        message = "OrderCode must be between 1 and 999999",
+                        error = "Mã đơn hàng phải từ 1 đến 999999"
+                    });
+                }
+
                 // Validate minimum amount
                 if (request.Amount < 2000)
                 {
@@ -286,6 +297,17 @@ namespace Trippio.Api.Controllers.Payment
             {
                 _logger.LogInformation("Getting payment info for OrderCode: {OrderCode}", orderCode);
 
+                // Validate orderCode range (PayOS supports up to 6 digits: 1-999999)
+                if (orderCode < 1 || orderCode > 999999)
+                {
+                    _logger.LogWarning("OrderCode {OrderCode} is out of valid range (1-999999)", orderCode);
+                    return BadRequest(new 
+                    { 
+                        message = "OrderCode must be between 1 and 999999",
+                        error = "Mã đơn hàng phải từ 1 đến 999999"
+                    });
+                }
+
                 var paymentInfo = await _payOS.getPaymentLinkInformation(orderCode);
 
                 return Ok(new
@@ -319,6 +341,17 @@ namespace Trippio.Api.Controllers.Payment
             try
             {
                 _logger.LogInformation("Cancelling payment for OrderCode: {OrderCode}", orderCode);
+
+                // Validate orderCode range (PayOS supports up to 6 digits: 1-999999)
+                if (orderCode < 1 || orderCode > 999999)
+                {
+                    _logger.LogWarning("OrderCode {OrderCode} is out of valid range (1-999999)", orderCode);
+                    return BadRequest(new 
+                    { 
+                        message = "OrderCode must be between 1 and 999999",
+                        error = "Mã đơn hàng phải từ 1 đến 999999"
+                    });
+                }
 
                 var cancelResult = await _payOS.cancelPaymentLink(orderCode, cancellationReason);
 
@@ -512,6 +545,18 @@ namespace Trippio.Api.Controllers.Payment
             try
             {
                 _logger.LogInformation("Manual webhook test for OrderCode: {OrderCode}", orderCode);
+
+                // Validate orderCode range (PayOS supports up to 6 digits: 1-999999)
+                if (orderCode < 1 || orderCode > 999999)
+                {
+                    _logger.LogWarning("OrderCode {OrderCode} is out of valid range (1-999999)", orderCode);
+                    return BadRequest(new 
+                    { 
+                        success = false,
+                        message = "OrderCode must be between 1 and 999999",
+                        error = "Mã đơn hàng phải từ 1 đến 999999"
+                    });
+                }
 
                 // Simulate successful payment webhook
                 var updateResult = await _paymentService.UpdateStatusByOrderCodeAsync(orderCode, "Paid");
