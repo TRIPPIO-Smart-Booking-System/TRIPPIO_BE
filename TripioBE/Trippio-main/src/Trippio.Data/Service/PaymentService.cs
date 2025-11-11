@@ -23,6 +23,7 @@ namespace Trippio.Data.Service
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
         private readonly VNPayOptions _vnPayOptions;
+        private readonly ILogger<PaymentService> _logger;
 
         public PaymentService(
             IPaymentRepository paymentRepo,
@@ -30,7 +31,8 @@ namespace Trippio.Data.Service
             IBookingRepository bookingRepo,
             IUnitOfWork uow,
             IMapper mapper,
-            IOptions<VNPayOptions> vnPayOptions
+            IOptions<VNPayOptions> vnPayOptions,
+            ILogger<PaymentService> logger
             )
         {
             _paymentRepo = paymentRepo;
@@ -39,6 +41,7 @@ namespace Trippio.Data.Service
             _uow = uow;
             _mapper = mapper;
             _vnPayOptions = vnPayOptions.Value;
+            _logger = logger;
         }
 
         public async Task<BaseResponse<IEnumerable<PaymentDto>>> GetAllAsync()
@@ -276,14 +279,26 @@ namespace Trippio.Data.Service
         {
             try
             {
+                _logger.LogInformation("🔄 [UpdateStatusByOrderCode] Starting - OrderCode: {OrderCode}, NewStatus: {Status}", orderCode, status);
+
                 if (!Enum.TryParse(status, true, out PaymentStatus parsedStatus))
+                {
+                    _logger.LogError("❌ [UpdateStatusByOrderCode] Invalid status enum: {Status}", status);
                     return BaseResponse<PaymentDto>.Error($"Unknown status: {status}", 400);
+                }
 
                 // Find payment by OrderCode - FIXED: Use direct query instead of GetAllAsync
+                _logger.LogInformation("🔍 [UpdateStatusByOrderCode] Finding payment by OrderCode: {OrderCode}", orderCode);
                 var payment = await _paymentRepo.GetByOrderCodeAsync(orderCode);
 
                 if (payment == null)
+                {
+                    _logger.LogError("❌ [UpdateStatusByOrderCode] Payment not found for OrderCode: {OrderCode}", orderCode);
                     return BaseResponse<PaymentDto>.NotFound($"Payment not found for OrderCode: {orderCode}");
+                }
+
+                _logger.LogInformation("✅ [UpdateStatusByOrderCode] Payment found - ID: {PaymentId}, CurrentStatus: {CurrentStatus}, OrderId: {OrderId}",
+                    payment.Id, payment.Status, payment.OrderId);
 
                 await _uow.BeginTransactionAsync();
                 try
@@ -294,50 +309,74 @@ namespace Trippio.Data.Service
                     if (parsedStatus == PaymentStatus.Paid)
                     {
                         payment.PaidAt = DateTime.UtcNow;
+                        _logger.LogInformation("⏰ [UpdateStatusByOrderCode] Setting PaidAt to: {PaidAt}", payment.PaidAt);
                     }
 
                     // Update related Order status
                     if (payment.OrderId.HasValue)
                     {
+                        _logger.LogInformation("📦 [UpdateStatusByOrderCode] Updating Order - OrderId: {OrderId}", payment.OrderId.Value);
                         var order = await _orderRepo.GetByIdAsync(payment.OrderId.Value);
                         if (order != null)
                         {
+                            var oldOrderStatus = order.Status;
                             if (parsedStatus == PaymentStatus.Paid)
                                 order.Status = OrderStatus.Confirmed;
                             else if (parsedStatus is PaymentStatus.Failed or PaymentStatus.Refunded)
                                 order.Status = OrderStatus.Cancelled;
+                            
+                            _logger.LogInformation("✅ [UpdateStatusByOrderCode] Order status updated - Old: {OldStatus}, New: {NewStatus}",
+                                oldOrderStatus, order.Status);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("⚠️ [UpdateStatusByOrderCode] Order not found for OrderId: {OrderId}", payment.OrderId.Value);
                         }
                     }
 
                     // Update related Booking status
                     if (payment.BookingId.HasValue)
                     {
+                        _logger.LogInformation("🎫 [UpdateStatusByOrderCode] Updating Booking - BookingId: {BookingId}", payment.BookingId.Value);
                         var booking = await _bookingRepo.GetWithDetailsAsync(payment.BookingId.Value)
                                       ?? await _bookingRepo.GetByIdAsync(payment.BookingId.Value);
                         if (booking != null)
                         {
+                            var oldBookingStatus = booking.Status;
                             if (parsedStatus == PaymentStatus.Paid)
                                 booking.Status = "Confirmed";
                             else if (parsedStatus is PaymentStatus.Failed or PaymentStatus.Refunded)
                                 booking.Status = "Cancelled";
 
                             booking.ModifiedDate = DateTime.UtcNow;
+                            _logger.LogInformation("✅ [UpdateStatusByOrderCode] Booking status updated - Old: {OldStatus}, New: {NewStatus}",
+                                oldBookingStatus, booking.Status);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("⚠️ [UpdateStatusByOrderCode] Booking not found for BookingId: {BookingId}", payment.BookingId.Value);
                         }
                     }
 
+                    _logger.LogInformation("💾 [UpdateStatusByOrderCode] Completing unit of work...");
                     await _uow.CompleteAsync();
                     await _uow.CommitTransactionAsync();
 
+                    _logger.LogInformation("✅ [UpdateStatusByOrderCode] SUCCESS - Payment status updated. OrderCode: {OrderCode}, NewStatus: {NewStatus}",
+                        orderCode, parsedStatus);
+
                     return BaseResponse<PaymentDto>.Success(_mapper.Map<PaymentDto>(payment), "Payment status updated successfully");
                 }
-                catch
+                catch (Exception txEx)
                 {
+                    _logger.LogError(txEx, "❌ [UpdateStatusByOrderCode] Transaction error for OrderCode: {OrderCode}", orderCode);
                     await _uow.RollbackTransactionAsync();
                     throw;
                 }
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "❌ [UpdateStatusByOrderCode] EXCEPTION - OrderCode: {OrderCode}, Status: {Status}", orderCode, status);
                 return BaseResponse<PaymentDto>.Error($"Failed to update payment status: {ex.Message}", 500);
             }
         }
