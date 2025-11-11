@@ -23,6 +23,12 @@ namespace Trippio.Data.SeedWorks
         {
             await _dbSet.AddRangeAsync(entities);
         }
+
+        public void Update(T entity)
+        {
+            _dbSet.Update(entity);
+        }
+
         public IEnumerable<T> Find(Expression<Func<T, bool>> expression)
         {
             return _dbSet.Where(expression).ToList();

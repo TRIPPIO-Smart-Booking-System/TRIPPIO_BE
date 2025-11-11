@@ -22,15 +22,13 @@ namespace Trippio.Data.Service
         private readonly IBookingRepository _bookingRepo;
         private readonly IUnitOfWork _uow;
         private readonly IMapper _mapper;
-        private readonly VNPayOptions _vnPayOptions;
 
         public PaymentService(
             IPaymentRepository paymentRepo,
             IOrderRepository orderRepo,
             IBookingRepository bookingRepo,
             IUnitOfWork uow,
-            IMapper mapper,
-            IOptions<VNPayOptions> vnPayOptions
+            IMapper mapper
             )
         {
             _paymentRepo = paymentRepo;
@@ -38,7 +36,6 @@ namespace Trippio.Data.Service
             _bookingRepo = bookingRepo;
             _uow = uow;
             _mapper = mapper;
-            _vnPayOptions = vnPayOptions.Value;
         }
 
         public async Task<BaseResponse<IEnumerable<PaymentDto>>> GetAllAsync()
@@ -194,52 +191,9 @@ namespace Trippio.Data.Service
 
         public async Task<string> CreatePaymentUrlAsync(CreatePaymentRequest request, string returnUrl, string ipAddress)
         {
-            // Tạo Payment entity
-            var payment = new Payment
-            {
-                Id = Guid.NewGuid(),
-                UserId = request.UserId,
-                OrderId = request.OrderId,
-                BookingId = request.BookingId,
-                Amount = request.Amount,
-                PaymentMethod = "VNPay",
-                Status = PaymentStatus.Pending,
-                DateCreated = DateTime.UtcNow
-            };
-            await _paymentRepo.Add(payment);
-            await _uow.CompleteAsync();
-
-            // Tạo params cho VNPay
-            var vnpParams = new SortedDictionary<string, string>
-            {
-                { "vnp_Version", _vnPayOptions.Version },
-                { "vnp_Command", _vnPayOptions.Command },
-                { "vnp_TmnCode", _vnPayOptions.TmnCode },
-                { "vnp_Amount", ((long)(request.Amount * 100)).ToString() },  // VND, nhân 100
-                { "vnp_CurrCode", _vnPayOptions.CurrCode },
-                { "vnp_TxnRef", payment.Id.ToString() },
-                { "vnp_OrderInfo", $"Payment for Order {request.OrderId}" },
-                { "vnp_OrderType", "other" },
-                { "vnp_Locale", _vnPayOptions.Locale },
-                { "vnp_ReturnUrl", returnUrl },
-                { "vnp_IpAddr", ipAddress },
-                { "vnp_CreateDate", DateTime.Now.ToString("yyyyMMddHHmmss") }
-            };
-
-            // Tạo query string
-            var queryString = string.Join("&", vnpParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
-
-            // Tạo secure hash
-            var hashData = queryString;
-            var secretKeyBytes = Encoding.UTF8.GetBytes(_vnPayOptions.THashSecret);
-            using var hmac = new HMACSHA512(secretKeyBytes);
-            var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(hashData));
-            var vnpSecureHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
-
-            // Tạo URL đầy đủ
-            var paymentUrl = $"{_vnPayOptions.BaseUrl}?{queryString}&vnp_SecureHash={vnpSecureHash}";
-
-            return paymentUrl;
+            // VNPay payment method has been discontinued.
+            // Please use PayOS for real money payments instead.
+            throw new NotSupportedException("VNPay payment method is no longer supported. Please use PayOS instead.");
         }
 
         public async Task<BaseResponse<PaymentDto>> CreateAsync(CreatePaymentRequest request, CancellationToken ct = default)
@@ -295,6 +249,9 @@ namespace Trippio.Data.Service
                     {
                         payment.PaidAt = DateTime.UtcNow;
                     }
+
+                    // ✅ FIXED: Explicitly update payment in repository
+                    _paymentRepo.Update(payment);
 
                     // Update related Order status
                     if (payment.OrderId.HasValue)
