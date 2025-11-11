@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Authorization;
 using Net.payOS;
 using Net.payOS.Types;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Identity;
+using Trippio.Core.Domain.Identity;
 
 namespace Trippio.Api.Controllers;
 
@@ -22,19 +24,28 @@ public class CheckoutController : ControllerBase
     private readonly PayOSSettings _payOSSettings;
     private readonly Net.payOS.PayOS _payOS;
     private readonly ILogger<CheckoutController> _logger;
+    private readonly IEmailService _emailService;
+    private readonly UserManager<AppUser> _userManager;
+    private readonly IOrderRepository _orderRepository;
 
     public CheckoutController(
         IBasketService basket, 
         IOrderService orders, 
         IPaymentService payments, 
         IOptions<PayOSSettings> payOSSettings,
-        ILogger<CheckoutController> logger)
+        ILogger<CheckoutController> logger,
+        IEmailService emailService,
+        UserManager<AppUser> userManager,
+        IOrderRepository orderRepository)
     {
         _basket = basket; 
         _orders = orders; 
         _payments = payments; 
         _payOSSettings = payOSSettings.Value;
         _logger = logger;
+        _emailService = emailService;
+        _userManager = userManager;
+        _orderRepository = orderRepository;
         
         // Initialize PayOS SDK
         _payOS = new Net.payOS.PayOS(
@@ -303,4 +314,69 @@ public class CheckoutController : ControllerBase
             return BadRequest(BaseResponse<object>.Error($"Failed to cancel checkout: {ex.Message}", 400));
         }
     }
+
+    /// <summary>
+    /// Helper method to send order confirmation email
+    /// Used after successful payment from checkout or webhook
+    /// </summary>
+    private async Task SendOrderConfirmationEmailAsync(long orderCode, Guid? userId)
+    {
+        try
+        {
+            if (userId == null || userId == Guid.Empty)
+            {
+                _logger.LogWarning("⚠️ Cannot send email: UserId is missing for OrderCode {OrderCode}", orderCode);
+                return;
+            }
+
+            // Get user details
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user == null || string.IsNullOrEmpty(user.Email))
+            {
+                _logger.LogWarning("⚠️ Cannot send email: User or email not found for OrderCode {OrderCode}", orderCode);
+                return;
+            }
+
+            // Get order details (OrderCode = OrderId)
+            var order = await _orderRepository.FindByIdAsync((int)orderCode);
+            if (order == null)
+            {
+                _logger.LogWarning("⚠️ Cannot send email: Order not found for OrderCode {OrderCode}", orderCode);
+                return;
+            }
+
+            // Build email model
+            var emailModel = new OrderConfirmationEmailModel
+            {
+                OrderCode = (int)orderCode,
+                TotalAmount = order.TotalAmount,
+                OrderDate = order.OrderDate,
+                PaymentStatus = "Paid",
+                PaymentMethod = "PayOS",
+                Items = order.OrderItems?.Select(oi => new OrderItemEmailModel
+                {
+                    BookingName = oi.BookingName ?? "Dịch vụ Trippio",
+                    Quantity = oi.Quantity,
+                    Price = oi.Price
+                }).ToList() ?? new List<OrderItemEmailModel>()
+            };
+
+            // Send email
+            await _emailService.SendOrderConfirmationEmailAsync(
+                user.Email,
+                user.FirstName ?? user.UserName ?? "Quý khách",
+                emailModel
+            );
+
+            _logger.LogInformation("✅ Order confirmation email sent successfully to {Email} for OrderCode {OrderCode}", 
+                user.Email, orderCode);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Error sending order confirmation email for OrderCode {OrderCode}: {Message}", 
+                orderCode, ex.Message);
+            // Don't throw - email failure shouldn't block payment process
+        }
+    }
 }
+
