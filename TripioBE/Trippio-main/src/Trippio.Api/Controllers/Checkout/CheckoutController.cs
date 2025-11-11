@@ -260,15 +260,18 @@ public class CheckoutController : ControllerBase
             var response = new PayOSPaymentResponse
             {
                 CheckoutUrl = createResult.checkoutUrl,
-                OrderCode = payOSOrderCode,  // ✅ Return PayOS's OrderCode to frontend
+                OrderCode = payOSOrderCode,  // ✅ Universal identifier for Order & Payment
                 Amount = (int)order.TotalAmount,
                 QrCode = createResult.qrCode,
                 PaymentLinkId = createResult.paymentLinkId,
                 Status = "PENDING"
             };
 
+            _logger.LogInformation("✅ Checkout completed - OrderId: {OrderId}, OrderCode: {OrderCode}, Amount: {Amount}", 
+                order.Id, payOSOrderCode, order.TotalAmount);
+
             return Ok(BaseResponse<PayOSPaymentResponse>.Success(response, 
-                $"Order #{order.Id} created successfully. Please complete payment."));
+                $"Order #{order.Id} created successfully. OrderCode: {payOSOrderCode}. Please complete payment."));
         }
         catch (Exception ex)
         {
