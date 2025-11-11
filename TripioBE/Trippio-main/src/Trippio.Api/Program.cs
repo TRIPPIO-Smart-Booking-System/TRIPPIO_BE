@@ -199,6 +199,7 @@ internal class Program
                 });
 
                 c.ParameterFilter<SwaggerNullableParameterFilter>();
+                c.OperationFilter<Trippio.Api.Filters.FormFileSwaggerFilter>();
 
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
