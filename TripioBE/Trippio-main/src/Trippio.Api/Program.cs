@@ -246,7 +246,19 @@ internal class Program
 
             var app = builder.Build();
 
-            app.UseStaticFiles();
+            // ===== Configure Static Files (Avatar, Uploads) =====
+            var staticFileOptions = new StaticFileOptions
+            {
+                ServeUnknownFileTypes = true,
+                DefaultContentType = "application/octet-stream",
+                OnPrepareResponse = ctx =>
+                {
+                    ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=3600"); // 1 hour cache
+                }
+            };
+            app.UseStaticFiles(staticFileOptions);
+
+            // ===== Enable CORS Preflight & Health Check Logging =====
             app.UseSerilogRequestLogging();
 
             // CORS (sau static files, trước auth)

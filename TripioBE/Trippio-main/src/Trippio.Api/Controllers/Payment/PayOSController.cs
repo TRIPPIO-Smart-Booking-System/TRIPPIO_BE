@@ -25,15 +25,24 @@ namespace Trippio.Api.Controllers.Payment
         private readonly PayOSSettings _settings;
         private readonly ILogger<PayOSController> _logger;
         private readonly IPaymentService _paymentService;
+        private readonly IOrderRepository _orderRepository;
+        private readonly UserManager<AppUser> _userManager;
+        private readonly IEmailService _emailService;
 
         public PayOSController(
             IOptions<PayOSSettings> settings,
             ILogger<PayOSController> logger,
-            IPaymentService paymentService)
+            IPaymentService paymentService,
+            IOrderRepository orderRepository,
+            UserManager<AppUser> userManager,
+            IEmailService emailService)
         {
             _settings = settings.Value;
             _logger = logger;
             _paymentService = paymentService;
+            _orderRepository = orderRepository;
+            _userManager = userManager;
+            _emailService = emailService;
             
             // Initialize PayOS SDK
             _payOS = new Net.payOS.PayOS(
@@ -459,6 +468,17 @@ namespace Trippio.Api.Controllers.Payment
                     {
                         _logger.LogInformation("✅ SUCCESS: Payment status updated to PAID for OrderCode: {OrderCode}. Payment ID: {PaymentId}", 
                             orderCode, updateResult.Data?.Id);
+
+                        // ✅ NEW: Send order confirmation email
+                        try
+                        {
+                            await SendOrderConfirmationEmailAsync(orderCode, updateResult.Data?.UserId);
+                        }
+                        catch (Exception emailEx)
+                        {
+                            _logger.LogError(emailEx, "⚠️ Failed to send order confirmation email for OrderCode: {OrderCode}", orderCode);
+                            // Continue - don't fail the payment update if email fails
+                        }
                     }
                     else
                     {
@@ -631,6 +651,69 @@ namespace Trippio.Api.Controllers.Payment
                 message = "PayOS webhook endpoint is active",
                 timestamp = DateTime.UtcNow
             });
+        }
+
+        /// <summary>
+        /// Helper method to send order confirmation email after successful payment
+        /// </summary>
+        private async Task SendOrderConfirmationEmailAsync(long orderCode, Guid? userId)
+        {
+            try
+            {
+                if (userId == null || userId == Guid.Empty)
+                {
+                    _logger.LogWarning("⚠️ Cannot send email: UserId is missing for OrderCode {OrderCode}", orderCode);
+                    return;
+                }
+
+                // Get user details
+                var user = await _userManager.FindByIdAsync(userId.ToString());
+                if (user == null || string.IsNullOrEmpty(user.Email))
+                {
+                    _logger.LogWarning("⚠️ Cannot send email: User or email not found for OrderCode {OrderCode}", orderCode);
+                    return;
+                }
+
+                // Get order details (OrderCode = OrderId)
+                var order = await _orderRepository.FindByIdAsync((int)orderCode);
+                if (order == null)
+                {
+                    _logger.LogWarning("⚠️ Cannot send email: Order not found for OrderCode {OrderCode}", orderCode);
+                    return;
+                }
+
+                // Build email model
+                var emailModel = new OrderConfirmationEmailModel
+                {
+                    OrderCode = (int)orderCode,
+                    TotalAmount = order.TotalAmount,
+                    OrderDate = order.OrderDate,
+                    PaymentStatus = "Paid",
+                    PaymentMethod = "PayOS",
+                    Items = order.OrderItems?.Select(oi => new OrderItemEmailModel
+                    {
+                        BookingName = oi.BookingName ?? "Dịch vụ Trippio",
+                        Quantity = oi.Quantity,
+                        Price = oi.Price
+                    }).ToList() ?? new List<OrderItemEmailModel>()
+                };
+
+                // Send email
+                await _emailService.SendOrderConfirmationEmailAsync(
+                    user.Email,
+                    user.FirstName ?? user.UserName ?? "Quý khách",
+                    emailModel
+                );
+
+                _logger.LogInformation("✅ Order confirmation email sent successfully to {Email} for OrderCode {OrderCode}", 
+                    user.Email, orderCode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error sending order confirmation email for OrderCode {OrderCode}: {Message}", 
+                    orderCode, ex.Message);
+                // Don't throw - email failure shouldn't block payment process
+            }
         }
 
         /// <summary>
