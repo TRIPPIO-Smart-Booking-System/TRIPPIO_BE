@@ -11,7 +11,8 @@ namespace Trippio.Core.Models.Payment
         public string CheckoutUrl { get; set; } = string.Empty;
 
         /// <summary>
-        /// Order code for tracking
+        /// Order code - Universal identifier for both Order and Payment tracking
+        /// Use this for: /orders/{orderCode}, webhook matching, payment queries
         /// </summary>
         public long OrderCode { get; set; }
 
