@@ -58,13 +58,24 @@ namespace Trippio.Api.Controllers.AdminApi
 
             var totalRow = await query.CountAsync();
 
-            query = query.OrderByDescending(x => x.DateCreated)
+            var users = await query
+               .OrderByDescending(x => x.DateCreated)
                .Skip((pageIndex - 1) * pageSize)
-               .Take(pageSize);
+               .Take(pageSize)
+               .ToListAsync();
+
+            var userDtos = new List<UserDto>();
+            foreach (var user in users)
+            {
+                var userDto = _mapper.Map<AppUser, UserDto>(user);
+                var roles = await _userManager.GetRolesAsync(user);
+                userDto.Roles = (List<string>)roles;
+                userDtos.Add(userDto);
+            }
 
             var pagedResponse = new PageResult<UserDto>
             {
-                Results = await _mapper.ProjectTo<UserDto>(query).ToListAsync(),
+                Results = userDtos,
                 CurrentPage = pageIndex,
                 RowCount = totalRow,
                 PageSize = pageSize
@@ -193,26 +204,41 @@ namespace Trippio.Api.Controllers.AdminApi
         [Authorize(Users.Edit)]
         public async Task<IActionResult> AssignRolesToUser(string id, [FromBody] string[] roles)
         {
-            var user = await _userManager.FindByIdAsync(id);
-            if (user == null)
+            try
             {
-                return NotFound();
-            }
-            var currentRoles = await _userManager.GetRolesAsync(user);
-            var removedResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
-            var addedResult = await _userManager.AddToRolesAsync(user, roles);
+                if (string.IsNullOrEmpty(id))
+                    return BadRequest(new { message = "User ID is required." });
 
-            if (!addedResult.Succeeded || !removedResult.Succeeded)
+                var user = await _userManager.FindByIdAsync(id);
+                if (user == null)
+                    return NotFound(new { message = "User not found." });
+
+                if (roles == null || roles.Length == 0)
+                    return BadRequest(new { message = "At least one role is required." });
+
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                var removedResult = await _userManager.RemoveFromRolesAsync(user, currentRoles.ToArray());
+                
+                if (!removedResult.Succeeded)
+                {
+                    var errors = string.Join("; ", removedResult.Errors.Select(x => x.Description));
+                    return BadRequest(new { message = "Failed to remove current roles.", errors });
+                }
+
+                var addedResult = await _userManager.AddToRolesAsync(user, roles);
+                
+                if (!addedResult.Succeeded)
+                {
+                    var errors = string.Join("; ", addedResult.Errors.Select(x => x.Description));
+                    return BadRequest(new { message = "Failed to assign new roles.", errors });
+                }
+
+                return Ok(new { message = "Roles assigned successfully." });
+            }
+            catch (Exception ex)
             {
-                List<IdentityError> addedErrorList = addedResult.Errors.ToList();
-                List<IdentityError> removedErrorList = removedResult.Errors.ToList();
-                var errorList = new List<IdentityError>();
-                errorList.AddRange(addedErrorList);
-                errorList.AddRange(removedErrorList);
-
-                return BadRequest(string.Join("<br/>", errorList.Select(x => x.Description)));
+                return StatusCode(500, new { message = "An error occurred while assigning roles.", error = ex.Message });
             }
-            return Ok();
         }
     }
 }
