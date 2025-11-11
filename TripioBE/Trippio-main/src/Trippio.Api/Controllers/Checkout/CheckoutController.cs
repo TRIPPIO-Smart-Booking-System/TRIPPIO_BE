@@ -222,10 +222,17 @@ public class CheckoutController : ControllerBase
                 }
             } while (retryCount < maxRetries);
 
-            _logger.LogInformation("PayOS payment link created successfully. CheckoutUrl: {CheckoutUrl}", 
-                createResult.checkoutUrl);
+            _logger.LogInformation("PayOS payment link created successfully. CheckoutUrl: {CheckoutUrl}, PayOS OrderCode: {PayOSOrderCode}", 
+                createResult.checkoutUrl, createResult.orderCode);
 
-            // Step 5: Save payment record to database
+            // ✅ CRITICAL FIX: Use OrderCode from PayOS response, NOT the one we generated
+            // PayOS may modify or validate the orderCode, so we MUST use what PayOS returns
+            var payOSOrderCode = createResult.orderCode;
+            
+            _logger.LogInformation("OrderCode mapping - Generated: {GeneratedOrderCode}, PayOS Returned: {PayOSOrderCode}", 
+                orderCode, payOSOrderCode);
+
+            // Step 5: Save payment record to database with PayOS's OrderCode
             var paymentRequest = new CreatePaymentRequest
             {
                 UserId = userId,
@@ -233,27 +240,27 @@ public class CheckoutController : ControllerBase
                 Amount = order.TotalAmount,
                 PaymentMethod = "PayOS",
                 PaymentLinkId = createResult.paymentLinkId,
-                OrderCode = orderCode  // Use the unique orderCode generated above
+                OrderCode = payOSOrderCode  // ✅ FIXED: Use PayOS's orderCode for webhook matching
             };
 
             var paymentResponse = await _payments.CreateAsync(paymentRequest, ct);
             if (paymentResponse.Code != 200)
             {
-                _logger.LogError("Failed to save payment record for OrderId: {OrderId}. Error: {Error}", 
-                    order.Id, paymentResponse.Message);
+                _logger.LogError("❌ CRITICAL: Failed to save payment record for OrderId: {OrderId}, PayOS OrderCode: {OrderCode}. Error: {Error}", 
+                    order.Id, payOSOrderCode, paymentResponse.Message);
                 // Continue anyway - payment link is already created
             }
             else
             {
-                _logger.LogInformation("Payment record saved successfully for OrderId: {OrderId}, PaymentId: {PaymentId}", 
-                    order.Id, paymentResponse.Data?.Id);
+                _logger.LogInformation("✅ Payment record saved successfully - OrderId: {OrderId}, PaymentId: {PaymentId}, OrderCode: {OrderCode}", 
+                    order.Id, paymentResponse.Data?.Id, payOSOrderCode);
             }
 
             // Step 6: Return response with order details and payment URL
             var response = new PayOSPaymentResponse
             {
                 CheckoutUrl = createResult.checkoutUrl,
-                OrderCode = orderCode,
+                OrderCode = payOSOrderCode,  // ✅ Return PayOS's OrderCode to frontend
                 Amount = (int)order.TotalAmount,
                 QrCode = createResult.qrCode,
                 PaymentLinkId = createResult.paymentLinkId,
