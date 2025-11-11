@@ -131,24 +131,12 @@ public class CheckoutController : ControllerBase
             await _basket.ClearAsync(userId, ct);
             _logger.LogInformation("Basket cleared for UserId: {UserId}", userId);
 
-            // Step 4: Create PayOS payment link using unique OrderCode
-            // Generate unique orderCode (6 digits) to avoid PayOS conflicts
-            // Use timestamp + random to ensure uniqueness across multiple checkouts
-            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var random = new Random().Next(100, 999); // 3 digits
-            long orderCode = (timestamp % 1000000) * 1000 + random; // Combine to 6 digits
+            // Step 4: Use OrderId as OrderCode for PayOS
+            // ✅ FIXED: OrderCode = OrderId (auto-increment: 1, 2, 3, 4...)
+            // This ensures OrderCode is sequential and predictable
+            long orderCode = order.Id;
             
-            // Ensure orderCode is within PayOS limits (6 digits)
-            if (orderCode > 999999)
-            {
-                orderCode = orderCode % 1000000;
-            }
-            if (orderCode < 100000)
-            {
-                orderCode += 100000; // Ensure minimum 6 digits
-            }
-
-            _logger.LogInformation("Generated unique OrderCode: {OrderCode} for OrderId: {OrderId}", orderCode, order.Id);
+            _logger.LogInformation("✅ Using OrderId as OrderCode: {OrderCode} for OrderId: {OrderId}", orderCode, order.Id);
 
             // Prepare items for PayOS
             var paymentItems = new List<ItemData>
@@ -183,56 +171,27 @@ public class CheckoutController : ControllerBase
 
             _logger.LogInformation("Creating PayOS payment link for OrderCode: {OrderCode}", orderCode);
 
-            // Step 4b: Create PayOS payment link with retry logic for unique OrderCode
+            // Step 4b: Create PayOS payment link
             Net.payOS.Types.CreatePaymentResult createResult = null!;
-            int retryCount = 0;
-            const int maxRetries = 3;
-
-            do
+            try
             {
-                try
-                {
-                    // Call PayOS API to create payment link
-                    createResult = await _payOS.createPaymentLink(paymentData);
-                    break; // Success, exit retry loop
-                }
-                catch (Exception ex)
-                {
-                    retryCount++;
-                    if (retryCount >= maxRetries)
-                    {
-                        _logger.LogError(ex, "Failed to create PayOS payment after {MaxRetries} attempts", maxRetries);
-                        throw;
-                    }
-                    
-                    // Generate new orderCode for retry
-                    var newTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                    var newRandom = new Random().Next(100, 999);
-                    orderCode = (newTimestamp % 1000000) * 1000 + newRandom;
-                    if (orderCode > 999999) orderCode = orderCode % 1000000;
-                    if (orderCode < 100000) orderCode += 100000;
-                    
-                    _logger.LogWarning(ex, "PayOS payment creation failed (attempt {Attempt}), retrying with new OrderCode: {NewOrderCode}", 
-                        retryCount, orderCode);
-                    
-                    // Update paymentData with new orderCode
-                    paymentData = paymentData with { orderCode = orderCode };
-                    
-                    await Task.Delay(100); // Small delay before retry
-                }
-            } while (retryCount < maxRetries);
+                // Call PayOS API to create payment link
+                createResult = await _payOS.createPaymentLink(paymentData);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create PayOS payment for OrderCode: {OrderCode}", orderCode);
+                throw;
+            }
 
-            _logger.LogInformation("PayOS payment link created successfully. CheckoutUrl: {CheckoutUrl}, PayOS OrderCode: {PayOSOrderCode}", 
-                createResult.checkoutUrl, createResult.orderCode);
+            _logger.LogInformation("PayOS payment link created successfully. CheckoutUrl: {CheckoutUrl}, OrderCode: {OrderCode}", 
+                createResult.checkoutUrl, orderCode);
 
-            // ✅ CRITICAL FIX: Use OrderCode from PayOS response, NOT the one we generated
-            // PayOS may modify or validate the orderCode, so we MUST use what PayOS returns
-            var payOSOrderCode = createResult.orderCode;
+            // ✅ OrderCode = OrderId (already set above)
+            // No need for mapping - they are the same value
+            var payOSOrderCode = orderCode;  // Explicitly assign for clarity
             
-            _logger.LogInformation("OrderCode mapping - Generated: {GeneratedOrderCode}, PayOS Returned: {PayOSOrderCode}", 
-                orderCode, payOSOrderCode);
-
-            // Step 5: Save payment record to database with PayOS's OrderCode
+            // Step 5: Save payment record to database with OrderCode = OrderId
             var paymentRequest = new CreatePaymentRequest
             {
                 UserId = userId,
@@ -240,7 +199,7 @@ public class CheckoutController : ControllerBase
                 Amount = order.TotalAmount,
                 PaymentMethod = "PayOS",
                 PaymentLinkId = createResult.paymentLinkId,
-                OrderCode = payOSOrderCode  // ✅ FIXED: Use PayOS's orderCode for webhook matching
+                OrderCode = payOSOrderCode  // ✅ OrderCode = OrderId
             };
 
             var paymentResponse = await _payments.CreateAsync(paymentRequest, ct);
@@ -271,7 +230,7 @@ public class CheckoutController : ControllerBase
                 order.Id, payOSOrderCode, order.TotalAmount);
 
             return Ok(BaseResponse<PayOSPaymentResponse>.Success(response, 
-                $"Order #{order.Id} created successfully. OrderCode: {payOSOrderCode}. Please complete payment."));
+                $"Order #{payOSOrderCode} created successfully. OrderCode: {payOSOrderCode}. Please complete payment."));
         }
         catch (Exception ex)
         {
