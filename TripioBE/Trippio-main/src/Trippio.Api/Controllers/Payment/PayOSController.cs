@@ -527,6 +527,54 @@ namespace Trippio.Api.Controllers.Payment
         }
 
         /// <summary>
+        /// Test endpoint - Debug PayOS signature formula
+        /// </summary>
+        [HttpPost("test-signature")]
+        [AllowAnonymous]
+        public IActionResult TestSignature([FromBody] dynamic testData)
+        {
+            try
+            {
+                var orderCode = testData?.orderCode ?? 0;
+                var amount = testData?.amount ?? 0;
+                var code = testData?.code ?? "00";
+                var reference = testData?.reference ?? "";
+
+                var formulas = new[]
+                {
+                    // Formula 1: orderCode|amount|code|reference
+                    new { formula = "orderCode|amount|code|reference", data = $"{orderCode}|{amount}|{code}|{reference}" },
+                    // Formula 2: without reference
+                    new { formula = "orderCode|amount|code", data = $"{orderCode}|{amount}|{code}" },
+                    // Formula 3: different order
+                    new { formula = "code|orderCode|amount|reference", data = $"{code}|{orderCode}|{amount}|{reference}" },
+                    // Formula 4: only key fields
+                    new { formula = "orderCode|amount", data = $"{orderCode}|{amount}" },
+                };
+
+                var results = formulas.Select(f => new
+                {
+                    formula = f.formula,
+                    signatureData = f.data,
+                    signature = ComputeHmacSha256(f.data, _settings.ChecksumKey)
+                }).ToList();
+
+                _logger.LogInformation("🔬 Signature Test Results: {@Results}", results);
+
+                return Ok(new
+                {
+                    checksumKey = _settings.ChecksumKey,
+                    receivedSignature = testData?.signature,
+                    formulas = results
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Confirm webhook URL (for testing during PayOS setup)
         /// </summary>
         [HttpGet("payos-callback")]

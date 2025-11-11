@@ -260,7 +260,6 @@ namespace Trippio.Data.Service
                 try
                 {
                     var oldStatus = payment.Status;
-                    var oldStatus = payment.Status;
                     payment.Status = parsedStatus;
                     payment.ModifiedDate = DateTime.UtcNow;
                     
