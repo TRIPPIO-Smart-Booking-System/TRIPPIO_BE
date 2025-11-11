@@ -375,9 +375,13 @@ namespace Trippio.Api.Controllers.Payment
         {
             try
             {
+                // ✅ ENHANCED: Log RAW webhook data immediately for debugging
+                _logger.LogInformation("🔔 PayOS Webhook Received! Raw Data: {WebhookData}", 
+                    System.Text.Json.JsonSerializer.Serialize(webhookData));
+
                 if (webhookData?.Data == null)
                 {
-                    _logger.LogWarning("Received empty webhook data from PayOS");
+                    _logger.LogWarning("❌ Received empty webhook data from PayOS");
                     return BadRequest(new { success = false, message = "Invalid webhook data" });
                 }
 
@@ -388,9 +392,12 @@ namespace Trippio.Api.Controllers.Payment
                 var signatureData = $"{payload.OrderCode}|{payload.Amount}|{payload.Code}|{payload.Reference}";
                 var expectedSignature = ComputeHmacSha256(signatureData, _settings.ChecksumKey);
 
+                _logger.LogInformation("🔐 Signature Verification - OrderCode: {OrderCode}, SignatureData: '{SignatureData}', Expected: {Expected}, Received: {Received}",
+                    payload.OrderCode, signatureData, expectedSignature, webhookData.Signature ?? "null");
+
                 if (string.IsNullOrEmpty(webhookData.Signature) || webhookData.Signature != expectedSignature)
                 {
-                    _logger.LogWarning("Invalid webhook signature received. OrderCode: {OrderCode}. Expected: {Expected}, Got: {Actual}",
+                    _logger.LogWarning("❌ Invalid webhook signature received. OrderCode: {OrderCode}. Expected: {Expected}, Got: {Actual}",
                         payload.OrderCode, expectedSignature, webhookData.Signature ?? "null");
                     return BadRequest(new { success = false, message = "Invalid webhook signature" });
                 }
@@ -405,13 +412,13 @@ namespace Trippio.Api.Controllers.Payment
                 string transactionDateTime = payload.TransactionDateTime ?? "";
                 string description = payload.Description ?? "";
 
-                _logger.LogInformation("Received PayOS webhook for OrderCode: {OrderCode}, Code: {Code}, Amount: {Amount}",
-                    orderCode, code, amount);
+                _logger.LogInformation("📦 Webhook Details - OrderCode: {OrderCode}, Code: {Code}, Amount: {Amount}, Desc: {Desc}, Ref: {Ref}, Time: {Time}",
+                    orderCode, code, amount, desc, reference, transactionDateTime);
 
                 // Validate orderCode
                 if (orderCode <= 0)
                 {
-                    _logger.LogWarning("Invalid OrderCode in webhook: {OrderCode}", orderCode);
+                    _logger.LogWarning("❌ Invalid OrderCode in webhook: {OrderCode}", orderCode);
                     return BadRequest(new { success = false, message = "Invalid order code" });
                 }
 
@@ -419,25 +426,27 @@ namespace Trippio.Api.Controllers.Payment
                 // Code "00" means payment successful
                 if (code == "00")
                 {
-                    _logger.LogInformation("Payment SUCCESSFUL for OrderCode: {OrderCode}, Amount: {Amount}", 
+                    _logger.LogInformation("💰 Payment SUCCESSFUL for OrderCode: {OrderCode}, Amount: {Amount}", 
                         orderCode, amount);
 
-                    // Update payment status in database
+                    // ✅ CRITICAL: Update payment status in database
+                    _logger.LogInformation("🔄 Starting payment status update for OrderCode: {OrderCode}...", orderCode);
                     var updateResult = await _paymentService.UpdateStatusByOrderCodeAsync(orderCode, "Paid");
                     
                     if (updateResult.Code == 200)
                     {
-                        _logger.LogInformation("Payment status updated to PAID for OrderCode: {OrderCode}", orderCode);
+                        _logger.LogInformation("✅ SUCCESS: Payment status updated to PAID for OrderCode: {OrderCode}. Payment ID: {PaymentId}", 
+                            orderCode, updateResult.Data?.Id);
                     }
                     else
                     {
-                        _logger.LogError("Failed to update payment status for OrderCode: {OrderCode}. Error: {Error}", 
-                            orderCode, updateResult.Message);
+                        _logger.LogError("❌ FAILED: Could not update payment status for OrderCode: {OrderCode}. Error Code: {Code}, Message: {Error}", 
+                            orderCode, updateResult.Code, updateResult.Message);
                     }
                 }
                 else
                 {
-                    _logger.LogWarning("Payment FAILED or CANCELLED for OrderCode: {OrderCode}, Code: {Code}, Desc: {Desc}",
+                    _logger.LogWarning("❌ Payment FAILED or CANCELLED for OrderCode: {OrderCode}, Code: {Code}, Desc: {Desc}",
                         orderCode, code, desc);
 
                     // Update payment status as failed
@@ -445,34 +454,33 @@ namespace Trippio.Api.Controllers.Payment
                     
                     if (updateResult.Code == 200)
                     {
-                        _logger.LogInformation("Payment status updated to FAILED for OrderCode: {OrderCode}", orderCode);
+                        _logger.LogInformation("✅ Payment status updated to FAILED for OrderCode: {OrderCode}", orderCode);
                     }
                     else
                     {
-                        _logger.LogError("Failed to update payment status for OrderCode: {OrderCode}. Error: {Error}", 
+                        _logger.LogError("❌ Failed to update payment status for OrderCode: {OrderCode}. Error: {Error}", 
                             orderCode, updateResult.Message);
                     }
                 }
 
-                // Log full webhook data for debugging
-                _logger.LogInformation("Webhook Data: OrderCode={OrderCode}, Amount={Amount}, Code={Code}, Desc={Desc}, Ref={Ref}, Time={Time}",
-                    orderCode, amount, code, desc, reference, transactionDateTime);
-
                 // Return success to PayOS
+                _logger.LogInformation("✅ Webhook processed successfully for OrderCode: {OrderCode}", orderCode);
                 return Ok(new 
                 { 
                     success = true, 
-                    message = "Webhook processed successfully" 
+                    message = "Webhook processed successfully",
+                    orderCode = orderCode
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing PayOS webhook");
+                _logger.LogError(ex, "💥 EXCEPTION processing PayOS webhook: {Message}", ex.Message);
                 // Still return 200 to avoid PayOS retrying
                 return Ok(new 
                 { 
                     success = false, 
-                    message = "Webhook processing failed but acknowledged" 
+                    message = "Webhook processing failed but acknowledged",
+                    error = ex.Message
                 });
             }
         }
