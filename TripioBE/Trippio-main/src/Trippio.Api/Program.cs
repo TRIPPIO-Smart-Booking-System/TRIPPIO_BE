@@ -134,7 +134,6 @@ internal class Program
             // Options
             builder.Services.Configure<JwtTokenSettings>(configuration.GetSection("JwtTokenSettings"));
             builder.Services.Configure<MediaSettings>(configuration.GetSection("MediaSettings"));
-            builder.Services.Configure<VNPayOptions>(configuration.GetSection("Payments:VNPay"));
             builder.Services.Configure<RedirectUrlsOptions>(configuration.GetSection("Payments:RedirectUrls"));
             builder.Services.Configure<PayOSSettings>(configuration.GetSection("PayOS"));
 
