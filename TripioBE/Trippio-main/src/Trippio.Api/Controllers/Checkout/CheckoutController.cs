@@ -26,7 +26,6 @@ public class CheckoutController : ControllerBase
     private readonly ILogger<CheckoutController> _logger;
     private readonly IEmailService _emailService;
     private readonly UserManager<AppUser> _userManager;
-    private readonly IOrderRepository _orderRepository;
 
     public CheckoutController(
         IBasketService basket, 
@@ -35,8 +34,7 @@ public class CheckoutController : ControllerBase
         IOptions<PayOSSettings> payOSSettings,
         ILogger<CheckoutController> logger,
         IEmailService emailService,
-        UserManager<AppUser> userManager,
-        IOrderRepository orderRepository)
+        UserManager<AppUser> userManager)
     {
         _basket = basket; 
         _orders = orders; 
@@ -45,7 +43,6 @@ public class CheckoutController : ControllerBase
         _logger = logger;
         _emailService = emailService;
         _userManager = userManager;
-        _orderRepository = orderRepository;
         
         // Initialize PayOS SDK
         _payOS = new Net.payOS.PayOS(
@@ -337,13 +334,15 @@ public class CheckoutController : ControllerBase
                 return;
             }
 
-            // Get order details (OrderCode = OrderId)
-            var order = await _orderRepository.FindByIdAsync((int)orderCode);
-            if (order == null)
+            // Get order details using OrderService (OrderCode = OrderId)
+            var orderResult = await _orders.GetByIdAsync((int)orderCode);
+            if (orderResult.Code != 200 || orderResult.Data == null)
             {
                 _logger.LogWarning("⚠️ Cannot send email: Order not found for OrderCode {OrderCode}", orderCode);
                 return;
             }
+
+            var order = orderResult.Data;
 
             // Build email model
             var emailModel = new OrderConfirmationEmailModel
@@ -379,4 +378,5 @@ public class CheckoutController : ControllerBase
         }
     }
 }
+
 

@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Net.payOS;
 using Net.payOS.Types;
 using Trippio.Core.ConfigOptions;
+using Trippio.Core.Domain.Identity;
 using Trippio.Core.Models.Payment;
+using Trippio.Core.Repositories;
 using Trippio.Core.Services;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -25,24 +28,24 @@ namespace Trippio.Api.Controllers.Payment
         private readonly PayOSSettings _settings;
         private readonly ILogger<PayOSController> _logger;
         private readonly IPaymentService _paymentService;
-        private readonly IOrderRepository _orderRepository;
         private readonly UserManager<AppUser> _userManager;
         private readonly IEmailService _emailService;
+        private readonly IOrderService _orderService;
 
         public PayOSController(
             IOptions<PayOSSettings> settings,
             ILogger<PayOSController> logger,
             IPaymentService paymentService,
-            IOrderRepository orderRepository,
             UserManager<AppUser> userManager,
-            IEmailService emailService)
+            IEmailService emailService,
+            IOrderService orderService)
         {
             _settings = settings.Value;
             _logger = logger;
             _paymentService = paymentService;
-            _orderRepository = orderRepository;
             _userManager = userManager;
             _emailService = emailService;
+            _orderService = orderService;
             
             // Initialize PayOS SDK
             _payOS = new Net.payOS.PayOS(
@@ -629,13 +632,15 @@ namespace Trippio.Api.Controllers.Payment
                     return;
                 }
 
-                // Get order details (OrderCode = OrderId)
-                var order = await _orderRepository.FindByIdAsync((int)orderCode);
-                if (order == null)
+                // Get order details using OrderService (OrderCode = OrderId)
+                var orderResult = await _orderService.GetByIdAsync((int)orderCode);
+                if (orderResult.Code != 200 || orderResult.Data == null)
                 {
                     _logger.LogWarning("⚠️ Cannot send email: Order not found for OrderCode {OrderCode}", orderCode);
                     return;
                 }
+
+                var order = orderResult.Data;
 
                 // Build email model
                 var emailModel = new OrderConfirmationEmailModel
