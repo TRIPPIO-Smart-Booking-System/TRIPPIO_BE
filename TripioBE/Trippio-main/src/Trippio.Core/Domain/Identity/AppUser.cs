@@ -47,6 +47,14 @@ namespace Trippio.Core.Domain.Identity
 
         public bool IsFirstLogin { get; set; } = true;
 
+        // 🔐 Google OAuth Fields
+        [MaxLength(255)]
+        public string? GoogleId { get; set; }
+        [MaxLength(500)]
+        public string? Picture { get; set; }
+        [MaxLength(50)]
+        public string OAuthProvider { get; set; } = "google";
+
         // Navigation Properties
         public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
 

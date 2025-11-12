@@ -242,6 +242,11 @@ internal class Program
                     ValidAudience = configuration["JwtTokenSettings:Issuer"],
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JwtTokenSettings:Key"]))
                 };
+            })
+            .AddGoogle(options =>
+            {
+                options.ClientId = configuration["Authentication:Google:ClientId"] ?? "";
+                options.ClientSecret = configuration["Authentication:Google:ClientSecret"] ?? "";
             });
 
             var app = builder.Build();
