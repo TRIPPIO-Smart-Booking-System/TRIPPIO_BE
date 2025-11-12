@@ -79,7 +79,7 @@ namespace Trippio.Api.Controllers.Auth
                 if (user == null)
                 {
                     // Create new user from Google info
-                    var firstName = payload.Name?.Split(' ').First() ?? payload.Email.Split('@')[0];
+                    var firstName = payload.Name?.Split(' ').FirstOrDefault() ?? payload.Email.Split('@')[0];
                     var lastName = payload.Name?.Contains(' ') == true 
                         ? string.Join(" ", payload.Name.Split(' ').Skip(1)) 
                         : "";
@@ -108,19 +108,55 @@ namespace Trippio.Api.Controllers.Auth
                         return BadRequest(new { isSuccess = false, message = "Không thể tạo tài khoản" });
                     }
 
+                    // After user is created, update with Google fields to ensure they're saved
+                    user.GoogleId = payload.Subject;
+                    user.Picture = payload.Picture;
+                    user.OAuthProvider = "google";
+                    user.IsEmailVerified = true;
+                    user.LastLoginDate = DateTime.UtcNow;
+                    await _userManager.UpdateAsync(user);
+
+                    _logger.LogInformation($"Created new user from Google: {user.Email}, GoogleId: {user.GoogleId}");
+
                     // Assign default role (customer)
                     await _userManager.AddToRoleAsync(user, "customer");
                 }
                 else
                 {
-                    // Update Google ID if not set
+                    // Update existing user with Google info if not already linked
+                    bool needsUpdate = false;
+                    
                     if (string.IsNullOrEmpty(user.GoogleId))
                     {
                         user.GoogleId = payload.Subject;
-                        user.Picture = payload.Picture ?? user.Picture;
+                        needsUpdate = true;
+                    }
+
+                    if (string.IsNullOrEmpty(user.Picture) && !string.IsNullOrEmpty(payload.Picture))
+                    {
+                        user.Picture = payload.Picture;
+                        needsUpdate = true;
+                    }
+
+                    if (user.OAuthProvider != "google")
+                    {
                         user.OAuthProvider = "google";
+                        needsUpdate = true;
+                    }
+
+                    if (!user.IsEmailVerified)
+                    {
                         user.IsEmailVerified = true;
+                        needsUpdate = true;
+                    }
+
+                    user.LastLoginDate = DateTime.UtcNow;
+                    needsUpdate = true;
+
+                    if (needsUpdate)
+                    {
                         await _userManager.UpdateAsync(user);
+                        _logger.LogInformation($"Updated existing user with Google info: {user.Email}, GoogleId: {user.GoogleId}");
                     }
                 }
 
@@ -129,13 +165,18 @@ namespace Trippio.Api.Controllers.Auth
                 var accessToken = _tokenService.GenerateAccessToken(claims);
                 var refreshToken = _tokenService.GenerateRefreshToken();
 
-                // Save refresh token
+                // Save refresh token và update LastLoginDate
                 user.RefreshToken = refreshToken;
                 user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
                 user.LastLoginDate = DateTime.UtcNow;
-                await _userManager.UpdateAsync(user);
+                var updateResult = await _userManager.UpdateAsync(user);
+                
+                if (!updateResult.Succeeded)
+                {
+                    _logger.LogWarning($"Failed to save refresh token for user {user.Email}");
+                }
 
-                _logger.LogInformation($"Google login successful for user: {user.Email}");
+                _logger.LogInformation($"✅ Google login successful for user: {user.Email}, Id: {user.Id}");
 
                 return Ok(new
                 {
@@ -150,6 +191,7 @@ namespace Trippio.Api.Controllers.Auth
                         userName = user.UserName,
                         firstName = user.FirstName,
                         lastName = user.LastName,
+                        picture = user.Picture,
                         roles = (await _userManager.GetRolesAsync(user)).ToList()
                     }
                 });
