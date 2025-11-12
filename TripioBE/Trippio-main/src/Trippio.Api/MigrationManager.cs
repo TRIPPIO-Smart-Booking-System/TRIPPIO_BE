@@ -38,27 +38,6 @@ namespace Trippio.Api
                             logger.LogInformation("Data seeding completed successfully.");
                             break;
                         }
-                        catch (Microsoft.Data.SqlClient.SqlException sqlEx) when (sqlEx.Number == 1801)
-                        {
-                            // Error 1801: Database already exists - this is OK, just log and continue
-                            logger.LogInformation("Database already exists (error 1801), skipping creation and proceeding with migrations...");
-                            try
-                            {
-                                await context.Database.MigrateAsync();
-                                logger.LogInformation("Database migration completed. Running data seeder...");
-                                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-                                var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>();
-                                var dataSeeder = new DataSeeder(userManager, roleManager);
-                                await dataSeeder.SeedAsync(context);
-                                logger.LogInformation("Data seeding completed successfully.");
-                                break;
-                            }
-                            catch (Exception ex2)
-                            {
-                                logger.LogWarning(ex2, "Migration after create skip failed on attempt {Attempt}", i + 1);
-                                if (i == retries - 1) throw;
-                            }
-                        }
                         catch (Exception ex)
                         {
                             logger.LogWarning(ex, "Database migration attempt {Attempt} failed: {Message}", i + 1, ex.Message);
