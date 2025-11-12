@@ -67,139 +67,209 @@ namespace Trippio.Api.Controllers.Auth
                 }
                 catch (InvalidOperationException ex)
                 {
-                    _logger.LogWarning($"Invalid Google token: {ex.Message}");
-                    return Unauthorized(new { isSuccess = false, message = "Token Google không hợp lệ" });
+                    _logger.LogWarning($"❌ Invalid Google token: {ex.Message}");
+                    return Unauthorized(new { isSuccess = false, message = "Token Google không hợp lệ hoặc hết hạn" });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"❌ Google token validation error: {ex.GetType().Name} - {ex.Message}");
+                    return BadRequest(new { isSuccess = false, message = "Lỗi xác thực token Google" });
                 }
 
-                _logger.LogInformation($"Google user verified: {payload.Email}");
+                _logger.LogInformation($"✅ Google user verified: {payload.Email}");
+
+                // ✅ Validate payload
+                if (string.IsNullOrEmpty(payload.Email))
+                {
+                    _logger.LogWarning("❌ Google payload missing email");
+                    return BadRequest(new { isSuccess = false, message = "Email không tìm thấy trong Google token" });
+                }
 
                 // ✅ Find or create user
-                var user = await _userManager.FindByEmailAsync(payload.Email);
+                AppUser? user = null;
+                try
+                {
+                    user = await _userManager.FindByEmailAsync(payload.Email);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"❌ Database error finding user: {ex.Message}");
+                    return StatusCode(500, new { isSuccess = false, message = "Lỗi database" });
+                }
 
                 if (user == null)
                 {
-                    // Create new user from Google info
-                    var firstName = payload.Name?.Split(' ').FirstOrDefault() ?? payload.Email.Split('@')[0];
-                    var lastName = payload.Name?.Contains(' ') == true 
-                        ? string.Join(" ", payload.Name.Split(' ').Skip(1)) 
-                        : "";
-
-                    user = new AppUser
+                    try
                     {
-                        Id = Guid.NewGuid(),
-                        Email = payload.Email,
-                        UserName = payload.Email,
-                        FirstName = firstName,
-                        LastName = lastName,
-                        PhoneNumber = "+84900000000", // Default phone for Google users
-                        GoogleId = payload.Subject,
-                        Picture = payload.Picture,
-                        OAuthProvider = "google",
-                        IsEmailVerified = true,
-                        IsActive = true,
-                        DateCreated = DateTime.UtcNow,
-                        Dob = DateTime.Now.AddYears(-25)
-                    };
+                        // Create new user from Google info
+                        var firstName = payload.Name?.Split(' ').FirstOrDefault() ?? payload.Email.Split('@')[0];
+                        var lastName = payload.Name?.Contains(' ') == true 
+                            ? string.Join(" ", payload.Name.Split(' ').Skip(1)) 
+                            : "";
 
-                    var createResult = await _userManager.CreateAsync(user);
-                    if (!createResult.Succeeded)
-                    {
-                        _logger.LogError($"Failed to create user: {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
-                        return BadRequest(new { isSuccess = false, message = "Không thể tạo tài khoản" });
+                        user = new AppUser
+                        {
+                            Id = Guid.NewGuid(),
+                            Email = payload.Email,
+                            UserName = payload.Email,
+                            FirstName = firstName,
+                            LastName = lastName,
+                            PhoneNumber = "+84900000000",
+                            GoogleId = payload.Subject,
+                            Picture = payload.Picture,
+                            OAuthProvider = "google",
+                            IsEmailVerified = true,
+                            IsActive = true,
+                            DateCreated = DateTime.UtcNow,
+                            Dob = DateTime.Now.AddYears(-25)
+                        };
+
+                        var createResult = await _userManager.CreateAsync(user);
+                        if (!createResult.Succeeded)
+                        {
+                            var errors = string.Join("; ", createResult.Errors.Select(e => $"{e.Code}:{e.Description}"));
+                            _logger.LogError($"❌ Failed to create user: {errors}");
+                            return BadRequest(new { isSuccess = false, message = $"Không thể tạo tài khoản: {errors}" });
+                        }
+
+                        // After user is created, update with Google fields to ensure they're saved
+                        user.GoogleId = payload.Subject;
+                        user.Picture = payload.Picture;
+                        user.OAuthProvider = "google";
+                        user.IsEmailVerified = true;
+                        user.LastLoginDate = DateTime.UtcNow;
+                        
+                        var updateResult = await _userManager.UpdateAsync(user);
+                        if (!updateResult.Succeeded)
+                        {
+                            _logger.LogWarning($"⚠️ Failed to update user Google fields: {string.Join("; ", updateResult.Errors.Select(e => e.Description))}");
+                        }
+
+                        _logger.LogInformation($"✅ Created new user from Google: {user.Email}, GoogleId: {user.GoogleId}");
+
+                        // Assign default role (customer)
+                        try
+                        {
+                            await _userManager.AddToRoleAsync(user, "customer");
+                            _logger.LogInformation($"✅ Assigned 'customer' role to: {user.Email}");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning($"⚠️ Failed to assign customer role: {ex.Message}");
+                        }
                     }
-
-                    // After user is created, update with Google fields to ensure they're saved
-                    user.GoogleId = payload.Subject;
-                    user.Picture = payload.Picture;
-                    user.OAuthProvider = "google";
-                    user.IsEmailVerified = true;
-                    user.LastLoginDate = DateTime.UtcNow;
-                    await _userManager.UpdateAsync(user);
-
-                    _logger.LogInformation($"Created new user from Google: {user.Email}, GoogleId: {user.GoogleId}");
-
-                    // Assign default role (customer)
-                    await _userManager.AddToRoleAsync(user, "customer");
+                    catch (Exception ex)
+                    {
+                        _logger.LogError($"❌ Exception creating user: {ex.Message}", ex);
+                        return StatusCode(500, new { isSuccess = false, message = $"Lỗi tạo tài khoản: {ex.Message}" });
+                    }
                 }
                 else
                 {
-                    // Update existing user with Google info if not already linked
-                    bool needsUpdate = false;
-                    
-                    if (string.IsNullOrEmpty(user.GoogleId))
+                    try
                     {
-                        user.GoogleId = payload.Subject;
+                        // Update existing user with Google info if not already linked
+                        bool needsUpdate = false;
+                        
+                        if (string.IsNullOrEmpty(user.GoogleId))
+                        {
+                            user.GoogleId = payload.Subject;
+                            needsUpdate = true;
+                        }
+
+                        if (string.IsNullOrEmpty(user.Picture) && !string.IsNullOrEmpty(payload.Picture))
+                        {
+                            user.Picture = payload.Picture;
+                            needsUpdate = true;
+                        }
+
+                        if (user.OAuthProvider != "google")
+                        {
+                            user.OAuthProvider = "google";
+                            needsUpdate = true;
+                        }
+
+                        if (!user.IsEmailVerified)
+                        {
+                            user.IsEmailVerified = true;
+                            needsUpdate = true;
+                        }
+
+                        user.LastLoginDate = DateTime.UtcNow;
                         needsUpdate = true;
+
+                        if (needsUpdate)
+                        {
+                            var updateResult = await _userManager.UpdateAsync(user);
+                            if (!updateResult.Succeeded)
+                            {
+                                _logger.LogWarning($"⚠️ Failed to update user Google info: {string.Join("; ", updateResult.Errors.Select(e => e.Description))}");
+                            }
+                            else
+                            {
+                                _logger.LogInformation($"✅ Updated existing user with Google info: {user.Email}, GoogleId: {user.GoogleId}");
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogInformation($"ℹ️ User already linked to Google: {user.Email}");
+                        }
                     }
-
-                    if (string.IsNullOrEmpty(user.Picture) && !string.IsNullOrEmpty(payload.Picture))
+                    catch (Exception ex)
                     {
-                        user.Picture = payload.Picture;
-                        needsUpdate = true;
-                    }
-
-                    if (user.OAuthProvider != "google")
-                    {
-                        user.OAuthProvider = "google";
-                        needsUpdate = true;
-                    }
-
-                    if (!user.IsEmailVerified)
-                    {
-                        user.IsEmailVerified = true;
-                        needsUpdate = true;
-                    }
-
-                    user.LastLoginDate = DateTime.UtcNow;
-                    needsUpdate = true;
-
-                    if (needsUpdate)
-                    {
-                        await _userManager.UpdateAsync(user);
-                        _logger.LogInformation($"Updated existing user with Google info: {user.Email}, GoogleId: {user.GoogleId}");
+                        _logger.LogError($"❌ Exception updating user: {ex.Message}", ex);
+                        return StatusCode(500, new { isSuccess = false, message = $"Lỗi cập nhật tài khoản: {ex.Message}" });
                     }
                 }
 
                 // ✅ Generate JWT tokens
-                var claims = await GetUserClaims(user);
-                var accessToken = _tokenService.GenerateAccessToken(claims);
-                var refreshToken = _tokenService.GenerateRefreshToken();
-
-                // Save refresh token và update LastLoginDate
-                user.RefreshToken = refreshToken;
-                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
-                user.LastLoginDate = DateTime.UtcNow;
-                var updateResult = await _userManager.UpdateAsync(user);
-                
-                if (!updateResult.Succeeded)
+                try
                 {
-                    _logger.LogWarning($"Failed to save refresh token for user {user.Email}");
-                }
+                    var claims = await GetUserClaims(user);
+                    var accessToken = _tokenService.GenerateAccessToken(claims);
+                    var refreshToken = _tokenService.GenerateRefreshToken();
 
-                _logger.LogInformation($"✅ Google login successful for user: {user.Email}, Id: {user.Id}");
-
-                return Ok(new
-                {
-                    isSuccess = true,
-                    message = "Đăng nhập Google thành công",
-                    accessToken = accessToken,
-                    refreshToken = refreshToken,
-                    user = new
+                    // Save refresh token
+                    user.RefreshToken = refreshToken;
+                    user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+                    user.LastLoginDate = DateTime.UtcNow;
+                    
+                    var tokenUpdateResult = await _userManager.UpdateAsync(user);
+                    if (!tokenUpdateResult.Succeeded)
                     {
-                        id = user.Id.ToString(),
-                        email = user.Email,
-                        userName = user.UserName,
-                        firstName = user.FirstName,
-                        lastName = user.LastName,
-                        picture = user.Picture,
-                        roles = (await _userManager.GetRolesAsync(user)).ToList()
+                        _logger.LogWarning($"⚠️ Failed to save refresh token for user {user.Email}");
                     }
-                });
+
+                    _logger.LogInformation($"✅ Google login successful for user: {user.Email}, Id: {user.Id}");
+
+                    return Ok(new
+                    {
+                        isSuccess = true,
+                        message = "Đăng nhập Google thành công",
+                        accessToken = accessToken,
+                        refreshToken = refreshToken,
+                        user = new
+                        {
+                            id = user.Id.ToString(),
+                            email = user.Email,
+                            userName = user.UserName,
+                            firstName = user.FirstName,
+                            lastName = user.LastName,
+                            picture = user.Picture,
+                            roles = (await _userManager.GetRolesAsync(user)).ToList()
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"❌ Exception generating token: {ex.Message}", ex);
+                    return StatusCode(500, new { isSuccess = false, message = $"Lỗi tạo token: {ex.Message}" });
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Google verify error: {ex.Message}", ex);
-                return StatusCode(500, new { isSuccess = false, message = "Lỗi xác thực Google" });
+                _logger.LogError($"❌ Google verify unhandled exception: {ex.GetType().Name} - {ex.Message}", ex);
+                return StatusCode(500, new { isSuccess = false, message = $"Lỗi không mong muốn: {ex.Message}" });
             }
         }
 

@@ -30,27 +30,27 @@ namespace Trippio.Data.Repositories
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Review>> GetReviewsByUserIdAsync(Guid userId)
+        public async Task<IEnumerable<Review>> GetReviewsByCustomerIdAsync(Guid customerId)
         {
             return await _context.Reviews
                 .Include(r => r.Order)
-                .Where(r => r.UserId == userId)
+                .Where(r => r.UserId == customerId)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
         }
 
-        public async Task<Review?> GetReviewByOrderAndUserAsync(int orderId, Guid userId)
+        public async Task<Review?> GetReviewByOrderAndCustomerAsync(int orderId, Guid customerId)
         {
             return await _context.Reviews
                 .Include(r => r.User)
                 .Include(r => r.Order)
-                .FirstOrDefaultAsync(r => r.OrderId == orderId && r.UserId == userId);
+                .FirstOrDefaultAsync(r => r.OrderId == orderId && r.UserId == customerId);
         }
 
-        public async Task<bool> HasUserReviewedOrderAsync(int orderId, Guid userId)
+        public async Task<bool> HasCustomerReviewedOrderAsync(int orderId, Guid customerId)
         {
             return await _context.Reviews
-                .AnyAsync(r => r.OrderId == orderId && r.UserId == userId);
+                .AnyAsync(r => r.OrderId == orderId && r.UserId == customerId);
         }
     }
 }

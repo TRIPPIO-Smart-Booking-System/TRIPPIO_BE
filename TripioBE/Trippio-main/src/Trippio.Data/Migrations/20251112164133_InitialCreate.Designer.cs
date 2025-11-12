@@ -12,7 +12,7 @@ using Trippio.Data;
 namespace Trippio.Data.Migrations
 {
     [DbContext(typeof(TrippioDbContext))]
-    [Migration("20251002042253_InitialCreate")]
+    [Migration("20251112164133_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -537,6 +537,9 @@ namespace Trippio.Data.Migrations
                     b.Property<DateTime>("OrderDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(18,2)");
 
@@ -603,16 +606,26 @@ namespace Trippio.Data.Migrations
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<long?>("OrderCode")
+                        .HasColumnType("bigint");
+
                     b.Property<int?>("OrderId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("PaidAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("PaymentLinkId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("PaymentMethod")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
@@ -626,6 +639,40 @@ namespace Trippio.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Payments");
+                });
+
+            modelBuilder.Entity("Trippio.Core.Domain.Entities.Review", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("OrderId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("Reviews");
                 });
 
             modelBuilder.Entity("Trippio.Core.Domain.Entities.Room", b =>
@@ -928,6 +975,10 @@ namespace Trippio.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("GoogleId")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -962,8 +1013,19 @@ namespace Trippio.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<string>("OAuthProvider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PasswordResetOtp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("PasswordResetOtpExpiry")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
@@ -972,6 +1034,10 @@ namespace Trippio.Data.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
+
+                    b.Property<string>("Picture")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("RefreshToken")
                         .HasColumnType("nvarchar(max)");
@@ -1275,6 +1341,25 @@ namespace Trippio.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Trippio.Core.Domain.Entities.Review", b =>
+                {
+                    b.HasOne("Trippio.Core.Domain.Entities.Order", "Order")
+                        .WithMany("Reviews")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Trippio.Core.Domain.Identity.AppUser", "User")
+                        .WithMany("Reviews")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Trippio.Core.Domain.Entities.Room", b =>
                 {
                     b.HasOne("Trippio.Core.Domain.Entities.Hotel", "Hotel")
@@ -1353,11 +1438,18 @@ namespace Trippio.Data.Migrations
                     b.Navigation("OrderItems");
 
                     b.Navigation("Payments");
+
+                    b.Navigation("Reviews");
                 });
 
             modelBuilder.Entity("Trippio.Core.Domain.Entities.Transport", b =>
                 {
                     b.Navigation("TransportTrips");
+                });
+
+            modelBuilder.Entity("Trippio.Core.Domain.Identity.AppUser", b =>
+                {
+                    b.Navigation("Reviews");
                 });
 #pragma warning restore 612, 618
         }

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Trippio.Core.Models.Review;
 using Trippio.Core.Services;
-using Trippio.Core.SeedWorks.Constants;
 
 namespace Trippio.Api.Controllers
 {
@@ -30,15 +29,15 @@ namespace Trippio.Api.Controllers
                 return BadRequest(ModelState);
             }
 
-            var userId = GetUserIdFromToken();
-            if (userId == Guid.Empty)
+            var customerId = GetCustomerIdFromToken();
+            if (customerId == Guid.Empty)
             {
-                return Unauthorized("User ID not found in token.");
+                return Unauthorized("Customer ID not found in token.");
             }
 
             try
             {
-                var review = await _reviewService.CreateReviewAsync(request, userId);
+                var review = await _reviewService.CreateReviewAsync(request, customerId);
                 if (review == null)
                 {
                     return BadRequest("Cannot review this order. Order must have a completed payment and belong to you.");
@@ -67,13 +66,13 @@ namespace Trippio.Api.Controllers
                 return BadRequest(ModelState);
             }
 
-            var userId = GetUserIdFromToken();
-            if (userId == Guid.Empty)
+            var customerId = GetCustomerIdFromToken();
+            if (customerId == Guid.Empty)
             {
-                return Unauthorized("User ID not found in token.");
+                return Unauthorized("Customer ID not found in token.");
             }
 
-            var review = await _reviewService.UpdateReviewAsync(reviewId, request, userId);
+            var review = await _reviewService.UpdateReviewAsync(reviewId, request, customerId);
             if (review == null)
             {
                 return NotFound("Review not found or you don't have permission to update it.");
@@ -88,13 +87,13 @@ namespace Trippio.Api.Controllers
         [HttpDelete("{reviewId}")]
         public async Task<IActionResult> DeleteReview(int reviewId)
         {
-            var userId = GetUserIdFromToken();
-            if (userId == Guid.Empty)
+            var customerId = GetCustomerIdFromToken();
+            if (customerId == Guid.Empty)
             {
-                return Unauthorized("User ID not found in token.");
+                return Unauthorized("Customer ID not found in token.");
             }
 
-            var result = await _reviewService.DeleteReviewAsync(reviewId, userId);
+            var result = await _reviewService.DeleteReviewAsync(reviewId, customerId);
             if (!result)
             {
                 return NotFound("Review not found or you don't have permission to delete it.");
@@ -154,13 +153,13 @@ namespace Trippio.Api.Controllers
         [HttpGet("my-reviews")]
         public async Task<IActionResult> GetMyReviews()
         {
-            var userId = GetUserIdFromToken();
-            if (userId == Guid.Empty)
+            var customerId = GetCustomerIdFromToken();
+            if (customerId == Guid.Empty)
             {
-                return Unauthorized("User ID not found in token.");
+                return Unauthorized("Customer ID not found in token.");
             }
 
-            var reviews = await _reviewService.GetReviewsByUserIdAsync(userId);
+            var reviews = await _reviewService.GetReviewsByCustomerIdAsync(customerId);
             return Ok(reviews);
         }
 
@@ -170,24 +169,24 @@ namespace Trippio.Api.Controllers
         [HttpGet("can-review/{orderId}")]
         public async Task<IActionResult> CanReviewOrder(int orderId)
         {
-            var userId = GetUserIdFromToken();
-            if (userId == Guid.Empty)
+            var customerId = GetCustomerIdFromToken();
+            if (customerId == Guid.Empty)
             {
-                return Unauthorized("User ID not found in token.");
+                return Unauthorized("Customer ID not found in token.");
             }
 
-            var canReview = await _reviewService.CanUserReviewOrderAsync(orderId, userId);
+            var canReview = await _reviewService.CanCustomerReviewOrderAsync(orderId, customerId);
             return Ok(new { canReview = canReview });
         }
 
-        private Guid GetUserIdFromToken()
+        private Guid GetCustomerIdFromToken()
         {
-            var userIdClaim = User.FindFirst(UserClaims.Id)?.Value 
+            var customerIdClaim = User.FindFirst("CustomerId")?.Value 
                 ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             
-            if (Guid.TryParse(userIdClaim, out var userId))
+            if (Guid.TryParse(customerIdClaim, out var customerId))
             {
-                return userId;
+                return customerId;
             }
 
             return Guid.Empty;
