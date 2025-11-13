@@ -1,6 +1,5 @@
 name: Build and deploy container app to Azure Web App - Trippio
 
-
 on:
   push:
     branches: [ main ]
@@ -70,6 +69,7 @@ jobs:
           app-name: 'Trippio'
           slot-name: 'Production'
           images: '${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}'
+
 
 
 
