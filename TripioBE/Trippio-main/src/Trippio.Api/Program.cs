@@ -69,7 +69,8 @@ internal class Program
                     policy.WithOrigins(allowedOrigins)
                           .AllowAnyMethod()
                           .AllowAnyHeader()
-                          .AllowCredentials();
+                          .AllowCredentials()
+                          .WithExposedHeaders("Content-Disposition", "X-Total-Count");
                 }
                 else
                 {
@@ -77,7 +78,8 @@ internal class Program
                     policy.WithOrigins("http://localhost:3000", "http://localhost:4200")
                           .AllowAnyMethod()
                           .AllowAnyHeader()
-                          .AllowCredentials();
+                          .AllowCredentials()
+                          .WithExposedHeaders("Content-Disposition", "X-Total-Count");
                 }
             }));
 
@@ -265,6 +267,15 @@ internal class Program
 
             // ===== Enable CORS Preflight & Health Check Logging =====
             app.UseSerilogRequestLogging();
+
+            // Add security headers middleware
+            app.Use(async (context, next) =>
+            {
+                context.Response.Headers.Add("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+                context.Response.Headers.Add("Cross-Origin-Embedder-Policy", "require-corp");
+                context.Response.Headers.Add("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+                await next();
+            });
 
             // CORS (sau static files, trước auth)
             app.UseCors(VietokemanPolicy);
