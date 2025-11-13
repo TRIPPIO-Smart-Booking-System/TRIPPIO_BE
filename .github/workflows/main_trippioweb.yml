@@ -60,9 +60,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_CB06C8C410CD45DDA0F050727872E43C }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_E0C52D70895A4A32B4E54CA424EA0646 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_BD01B248CECA4C54A84C79C2EE242F25 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_8CE9DC82DE774333A8C13628834CBB8A }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_A4620C91ECF64D41B1376058D70A56F2 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_D044361ED33A4A4F94474777DA6B10CF }}
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
@@ -70,6 +70,7 @@ jobs:
           app-name: 'Trippio'
           slot-name: 'Production'
           images: '${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}'
+
 
 
 
