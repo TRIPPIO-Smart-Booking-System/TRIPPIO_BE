@@ -205,9 +205,8 @@ namespace Trippio.Api.Controllers
             Console.WriteLine($"[GetCustomerIdFromToken] User.Identity.AuthenticationType: {User.Identity?.AuthenticationType}");
             
             // Try multiple claim types: "id" (UserClaims.Id), "CustomerId", or NameIdentifier
-            var customerIdClaim = User.FindFirst(UserClaims.Id)?.Value
+            var customerIdClaim = User.FindFirst("id")?.Value
                 ?? User.FindFirst("CustomerId")?.Value
-                ?? User.FindFirst("id")?.Value
                 ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             
             Console.WriteLine($"[GetCustomerIdFromToken] CustomerIdClaim value: {(string.IsNullOrEmpty(customerIdClaim) ? "NULL/EMPTY ❌" : customerIdClaim)}");
