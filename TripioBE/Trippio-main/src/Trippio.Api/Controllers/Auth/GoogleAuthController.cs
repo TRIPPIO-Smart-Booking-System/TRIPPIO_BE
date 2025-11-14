@@ -1,10 +1,16 @@
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Google.Apis.Auth;
+using Microsoft.Extensions.Options;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Trippio.Api.Service;
+using Trippio.Core.ConfigOptions;
 using Trippio.Core.Domain.Identity;
+using Trippio.Core.Models.Auth;
+using Trippio.Core.SeedWorks.Constants;
 
 namespace Trippio.Api.Controllers.Auth
 {
@@ -16,17 +22,26 @@ namespace Trippio.Api.Controllers.Auth
         private readonly ITokenService _tokenService;
         private readonly ILogger<GoogleAuthController> _logger;
         private readonly IConfiguration _configuration;
+        private readonly RoleManager<AppRole> _roleManager;
+        private readonly IMapper _mapper;
+        private readonly JwtTokenSettings _jwtTokenSettings;
 
         public GoogleAuthController(
             UserManager<AppUser> userManager,
             ITokenService tokenService,
             ILogger<GoogleAuthController> logger,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            RoleManager<AppRole> roleManager,
+            IMapper mapper,
+            IOptions<JwtTokenSettings> jwtTokenSettings)
         {
             _userManager = userManager;
             _tokenService = tokenService;
             _logger = logger;
             _configuration = configuration;
+            _roleManager = roleManager;
+            _mapper = mapper;
+            _jwtTokenSettings = jwtTokenSettings.Value;
         }
 
         /// <summary>
@@ -225,40 +240,11 @@ namespace Trippio.Api.Controllers.Auth
                 // ✅ Generate JWT tokens
                 try
                 {
-                    var claims = await GetUserClaims(user);
-                    var accessToken = _tokenService.GenerateAccessToken(claims);
-                    var refreshToken = _tokenService.GenerateRefreshToken();
-
-                    // Save refresh token
-                    user.RefreshToken = refreshToken;
-                    user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
-                    user.LastLoginDate = DateTime.UtcNow;
-                    
-                    var tokenUpdateResult = await _userManager.UpdateAsync(user);
-                    if (!tokenUpdateResult.Succeeded)
-                    {
-                        _logger.LogWarning($"⚠️ Failed to save refresh token for user {user.Email}");
-                    }
+                    var loginResponse = await GenerateLoginResponse(user);
 
                     _logger.LogInformation($"✅ Google login successful for user: {user.Email}, Id: {user.Id}");
 
-                    return Ok(new
-                    {
-                        isSuccess = true,
-                        message = "Đăng nhập Google thành công",
-                        accessToken = accessToken,
-                        refreshToken = refreshToken,
-                        user = new
-                        {
-                            id = user.Id.ToString(),
-                            email = user.Email,
-                            userName = user.UserName,
-                            firstName = user.FirstName,
-                            lastName = user.LastName,
-                            picture = user.Picture,
-                            roles = (await _userManager.GetRolesAsync(user)).ToList()
-                        }
-                    });
+                    return Ok(loginResponse);
                 }
                 catch (Exception ex)
                 {
@@ -271,6 +257,53 @@ namespace Trippio.Api.Controllers.Auth
                 _logger.LogError($"❌ Google verify unhandled exception: {ex.GetType().Name} - {ex.Message}", ex);
                 return StatusCode(500, new { isSuccess = false, message = $"Lỗi không mong muốn: {ex.Message}" });
             }
+        }
+
+        private async Task<LoginResponse> GenerateLoginResponse(AppUser user)
+        {
+            // Ensure user is active
+            if (!user.IsActive)
+            {
+                user.IsActive = true;
+            }
+
+            // Update last login
+            user.LastLoginDate = DateTime.UtcNow;
+            user.IsFirstLogin = false;
+            await _userManager.UpdateAsync(user);
+
+            // Get user roles
+            var roles = await _userManager.GetRolesAsync(user);
+
+            // Create claims (same as AuthController.Login)
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
+                new Claim(UserClaims.Id, user.Id.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.UserName ?? string.Empty),
+                new Claim(ClaimTypes.Name, user.UserName ?? string.Empty),
+                new Claim(UserClaims.FirstName, user.FirstName),
+                new Claim(UserClaims.Roles, string.Join(";", roles)),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            var accessToken = _tokenService.GenerateAccessToken(claims);
+            var refreshToken = _tokenService.GenerateRefreshToken();
+
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(30);
+            await _userManager.UpdateAsync(user);
+
+            var userDto = _mapper.Map<UserDto>(user);
+            userDto.Roles = roles.ToList();
+
+            return new LoginResponse
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                ExpiresAt = DateTime.UtcNow.AddHours(_jwtTokenSettings.ExpireInHours),
+                User = userDto
+            };
         }
 
         private async Task<IEnumerable<Claim>> GetUserClaims(AppUser user)
