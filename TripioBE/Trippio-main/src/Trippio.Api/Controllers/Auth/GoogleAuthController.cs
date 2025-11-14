@@ -10,6 +10,7 @@ using Trippio.Api.Service;
 using Trippio.Core.ConfigOptions;
 using Trippio.Core.Domain.Identity;
 using Trippio.Core.Models.Auth;
+using Trippio.Core.Models.System;
 using Trippio.Core.SeedWorks.Constants;
 
 namespace Trippio.Api.Controllers.Auth
