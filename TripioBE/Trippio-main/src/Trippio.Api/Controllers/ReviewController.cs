@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Trippio.Core.Models.Review;
 using Trippio.Core.Services;
+using Trippio.Core.SeedWorks.Constants;
 
 namespace Trippio.Api.Controllers
 {
@@ -24,14 +25,28 @@ namespace Trippio.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateReview([FromBody] CreateReviewRequest request)
         {
+            Console.WriteLine("[ReviewController.CreateReview] === Request started ===");
+            Console.WriteLine($"[ReviewController.CreateReview] Request.OrderId: {request?.OrderId}");
+            Console.WriteLine($"[ReviewController.CreateReview] Request.Rating: {request?.Rating}");
+            Console.WriteLine($"[ReviewController.CreateReview] ModelState valid: {ModelState.IsValid}");
+            
             if (!ModelState.IsValid)
             {
+                Console.WriteLine("[ReviewController.CreateReview] ModelState is invalid");
                 return BadRequest(ModelState);
             }
 
             var customerId = GetCustomerIdFromToken();
+            Console.WriteLine($"[ReviewController.CreateReview] CustomerId extracted: {(customerId == Guid.Empty ? "EMPTY ❌" : customerId)}");
+            
             if (customerId == Guid.Empty)
             {
+                Console.WriteLine("[ReviewController.CreateReview] CustomerId is empty - checking token claims");
+                var claims = User.Claims;
+                foreach (var claim in claims)
+                {
+                    Console.WriteLine($"  - Claim: {claim.Type} = {claim.Value}");
+                }
                 return Unauthorized("Customer ID not found in token.");
             }
 
@@ -40,17 +55,21 @@ namespace Trippio.Api.Controllers
                 var review = await _reviewService.CreateReviewAsync(request, customerId);
                 if (review == null)
                 {
+                    Console.WriteLine("[ReviewController.CreateReview] Review creation returned null");
                     return BadRequest("Cannot review this order. Order must have a completed payment and belong to you.");
                 }
 
+                Console.WriteLine($"[ReviewController.CreateReview] ✓ Review created successfully: {review.Id}");
                 return Ok(new { message = "Review created successfully", data = review });
             }
             catch (InvalidOperationException ex)
             {
+                Console.WriteLine($"[ReviewController.CreateReview] InvalidOperationException: {ex.Message}");
                 return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[ReviewController.CreateReview] Exception: {ex}");
                 return StatusCode(500, new { message = "An error occurred while creating the review", error = ex.Message });
             }
         }
@@ -181,12 +200,29 @@ namespace Trippio.Api.Controllers
 
         private Guid GetCustomerIdFromToken()
         {
-            var customerIdClaim = User.FindFirst("CustomerId")?.Value 
+            Console.WriteLine("[GetCustomerIdFromToken] === Token extraction started ===");
+            Console.WriteLine($"[GetCustomerIdFromToken] User.Identity.IsAuthenticated: {User.Identity?.IsAuthenticated}");
+            Console.WriteLine($"[GetCustomerIdFromToken] User.Identity.AuthenticationType: {User.Identity?.AuthenticationType}");
+            
+            // Try multiple claim types: "id" (UserClaims.Id), "CustomerId", or NameIdentifier
+            var customerIdClaim = User.FindFirst(UserClaims.Id)?.Value
+                ?? User.FindFirst("CustomerId")?.Value
+                ?? User.FindFirst("id")?.Value
                 ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            
+            Console.WriteLine($"[GetCustomerIdFromToken] CustomerIdClaim value: {(string.IsNullOrEmpty(customerIdClaim) ? "NULL/EMPTY ❌" : customerIdClaim)}");
             
             if (Guid.TryParse(customerIdClaim, out var customerId))
             {
+                Console.WriteLine($"[GetCustomerIdFromToken] ✓ Parsed CustomerId: {customerId}");
                 return customerId;
+            }
+
+            Console.WriteLine($"[GetCustomerIdFromToken] ❌ Failed to parse CustomerId from claim");
+            Console.WriteLine($"[GetCustomerIdFromToken] All claims:");
+            foreach (var claim in User.Claims)
+            {
+                Console.WriteLine($"  - Type: {claim.Type}, Value: {claim.Value}");
             }
 
             return Guid.Empty;
