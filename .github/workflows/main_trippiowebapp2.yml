@@ -59,9 +59,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_8CE9DC82DE774333A8C13628834CBB8A }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_A4620C91ECF64D41B1376058D70A56F2 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_D044361ED33A4A4F94474777DA6B10CF }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_5094BE04E6794B7D91491124DB50ABEF }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_CB27B39DDE4E4D4FBEC3EFB398CC1966 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_F3E092CFA48E4E60AB0E6B6E9573B2E3 }}
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
@@ -69,6 +69,7 @@ jobs:
           app-name: 'trippiowebapp'
           slot-name: 'Production'
           images: '${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}'
+
 
 
 
