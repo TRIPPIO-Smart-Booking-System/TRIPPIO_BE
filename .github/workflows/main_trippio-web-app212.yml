@@ -60,4 +60,5 @@ jobs:
           app-name: 'trippio-web-app'
           slot-name: 'Production'
           images: 'containertrippio.azurecr.io/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_E2ADD9459BBE4AC08207B45A1F8CAE3C }}/trippioimage:${{ github.sha }}'
+
           
